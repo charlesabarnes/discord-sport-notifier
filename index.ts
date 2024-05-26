@@ -157,7 +157,8 @@ async function checkDatabaseForNotifications() {
     for (const game of games) {
       const channel = client.channels.cache.get(game.channelId!) as TextChannel;
       if (channel) {
-        channel.send(`<@&${game.notifyRoleId}> A game is coming up: ${game.eventName} on ${game.eventDate.toDateString()} at ${game.eventDate.toTimeString()}`);
+        const eventDateUnix = Math.floor(game.eventDate.getTime()/1000);
+        channel.send(`<@&${game.notifyRoleId}> A game is coming up: ${game.eventName} at <t:${eventDateUnix}:R>`);
         await gamesCollection.updateOne(
           { eventId: game.eventId },
           { $set: { notified: true } }
