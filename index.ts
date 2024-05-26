@@ -58,7 +58,7 @@ client.once('ready', async () => {
   await connectToDatabase();
   scheduleDailyCheck();
   checkUpcomingGames()
-  setInterval(checkDatabaseForNotifications, 300000); // Check every 5 minutes
+  setInterval(checkDatabaseForNotifications, 60*1000); // Check every 1 minute
 });
 
 function scheduleDailyCheck() {
