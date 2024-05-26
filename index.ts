@@ -152,7 +152,7 @@ async function checkDatabaseForNotifications() {
   try {
     const games = await gamesCollection.find({ eventDate: { $gte: tenMinutesAgo, }, notified: false }).toArray();
     for (const game of games) {
-      const channel = client.ch annels.cache.get(game.channelId!) as TextChannel;
+      const channel = client.channels.cache.get(game.channelId!) as TextChannel;
       if (channel) {
         channel.send(`<@&${game.notifyRoleId}> A game is coming up: ${game.eventName} on ${game.eventDate.toDateString()} at ${game.eventDate.toTimeString()}`);
         await gamesCollection.updateOne(
