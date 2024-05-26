@@ -1,0 +1,22 @@
+{
+  "name": "discord-sport-notifier",
+  "version": "1.0.0",
+  "description": "A discord chatbot that notifies roles when a game is coming up for your favorite sports teams",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charlesabarnes/discord-sport-notifier.git"
+  },
+  "author": "charlesabarnes",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/charlesabarnes/discord-sport-notifier/issues"
+  },
+  "homepage": "https://github.com/charlesabarnes/discord-sport-notifier#readme",
+  "dependencies": {
+    "discord.js": "^14.15.2"
+  }
+}
