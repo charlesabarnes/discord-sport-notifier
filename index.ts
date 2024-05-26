@@ -26,7 +26,7 @@ interface ConfigTeam {
 }
 
 interface ConfigLeague {
-  teamId: string;
+  leagueId: string;
   notifyRoleId: string;
   channelId: string;
 }
@@ -80,7 +80,7 @@ async function checkUpcomingGames() {
   });
 
   const leaguePromises = (config?.leagues || []).map(async (league) => {
-    await fetchUpcomingLeagueEvents(league.teamId, league.notifyRoleId, league.channelId);
+    await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId);
   });
 
   await Promise.all([...teamPromises, ...leaguePromises]);
