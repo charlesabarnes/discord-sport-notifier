@@ -19,7 +19,7 @@ interface Config {
 }
 
 interface ConfigTeam {
-  teamName: string;
+  teamId: string;
   notifyRoleId: string;
   channelId: string;
 }
@@ -69,7 +69,7 @@ function scheduleDailyCheck() {
 async function checkUpcomingGames() {
 
   const promises = config.teams.map(async (team) => {
-    await fetchUpcomingGames(team.teamName, team.notifyRoleId, team.channelId);
+    await fetchUpcomingGames(team.teamId, team.notifyRoleId, team.channelId);
   });
 
   await Promise.all(promises);
@@ -77,7 +77,8 @@ async function checkUpcomingGames() {
 
 async function fetchUpcomingGames(teamId: string, ...args: any[]) {
   try {
-    const response = await fetch(`https://www.thesportsdb.com/api/v1/json/${TV_DB_API_KEY}/eventsnext.php?id=${teamId}`);
+    const url=`https://www.thesportsdb.com/api/v1/json/${TV_DB_API_KEY}/eventsnext.php?id=${teamId}`;
+    const response = await fetch(url);
     const responseJson = await response.json();
     const events = responseJson.events;
 
