@@ -86,7 +86,7 @@ async function checkUpcomingGames() {
   await Promise.all([...teamPromises, ...leaguePromises]);
 }
 
-async function fetchUpcomingLeagueEvents(leagueId: string, ...args: any[]) {
+async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string) {
   try {
     const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
     const response = await fetch(url);
@@ -102,7 +102,8 @@ async function fetchUpcomingLeagueEvents(leagueId: string, ...args: any[]) {
           eventDate: gameDate,
           notified: false,
           leagueId,
-          ...args,
+          notifyRoleId,
+          channelId: leagueChannelId,
         };
         await gamesCollection.updateOne(
           { eventId: event.idEvent },
@@ -116,7 +117,7 @@ async function fetchUpcomingLeagueEvents(leagueId: string, ...args: any[]) {
   }
 }
 
-async function fetchUpcomingGames(teamId: string, ...args: any[]) {
+async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueChannelId: string) {
   try {
     const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnext.php?id=${teamId}`;
     const response = await fetch(url);
@@ -132,7 +133,8 @@ async function fetchUpcomingGames(teamId: string, ...args: any[]) {
           eventDate: gameDate,
           notified: false,
           teamId,
-          ...args,
+          notifyRoleId,
+          channelId: leagueChannelId,
         };
         await gamesCollection.updateOne(
           { eventId: event.idEvent },
