@@ -150,9 +150,10 @@ async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueCh
 
 async function checkDatabaseForNotifications() {
   const tenMinutesAgo = new Date((new Date()).getTime() - 600000);
+  const tenMinutesFromNow = new Date((new Date()).getTime() + 600000);
 
   try {
-    const games = await gamesCollection.find({ eventDate: { $gte: tenMinutesAgo, }, notified: false }).toArray();
+    const games = await gamesCollection.find({ eventDate: { $gte: tenMinutesAgo, $lte: tenMinutesFromNow }, notified: false }).toArray();
     for (const game of games) {
       const channel = client.channels.cache.get(game.channelId!) as TextChannel;
       if (channel) {
