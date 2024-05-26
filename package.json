@@ -4,7 +4,9 @@
   "description": "A discord chatbot that notifies roles when a game is coming up for your favorite sports teams",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -17,6 +19,11 @@
   },
   "homepage": "https://github.com/charlesabarnes/discord-sport-notifier#readme",
   "dependencies": {
-    "discord.js": "^14.15.2"
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
   }
 }

@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - SPORTSDB_API_KEY=${SPORTSDB_API_KEY}
+      - MONGODB_URI=${MONGODB_URI}
+    volumes:
+      - .:/app
+    command: npm start

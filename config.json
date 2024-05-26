@@ -1,0 +1,29 @@
+{
+  "teams": [
+    {
+      "teamId": "135280",
+      "notifyRoleId": "cardinalsEnjoyers",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "139089",
+      "notifyRoleId": "battlehawksEnjoyers",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "147062",
+      "notifyRoleId": "citysc",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "134859",
+      "notifyRoleId": "blues",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "134886",
+      "notifyRoleId": "timberwolves",
+      "channelId": "565267644627025930"
+    }
+  ]
+}
