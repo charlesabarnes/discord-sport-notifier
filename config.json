@@ -2,27 +2,27 @@
   "teams": [
     {
       "teamId": "135280",
-      "notifyRoleId": "cardinalsEnjoyers",
+      "notifyRoleId": "1244111381310210079",
       "channelId": "565267644627025930"
     },
     {
       "teamId": "139089",
-      "notifyRoleId": "battlehawksEnjoyers",
+      "notifyRoleId": "1244111776040353813",
       "channelId": "565267644627025930"
     },
     {
       "teamId": "147062",
-      "notifyRoleId": "citysc",
+      "notifyRoleId": "1244112601466540083",
       "channelId": "565267644627025930"
     },
     {
       "teamId": "134859",
-      "notifyRoleId": "blues",
+      "notifyRoleId": "1244113175876599860",
       "channelId": "565267644627025930"
     },
     {
       "teamId": "134886",
-      "notifyRoleId": "timberwolves",
+      "notifyRoleId": "1244112120946102302",
       "channelId": "565267644627025930"
     }
   ]

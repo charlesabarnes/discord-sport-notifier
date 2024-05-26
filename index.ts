@@ -50,6 +50,7 @@ client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
   await connectToDatabase();
   scheduleDailyCheck();
+  checkUpcomingGames()
   setInterval(checkDatabaseForNotifications, 300000); // Check every 5 minutes
 });
 
