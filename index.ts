@@ -14,11 +14,18 @@ const COLLECTION_NAME =  process.env.COLLECTION_NAME || 'games';
 
 
 interface Config {
-  teams: ConfigTeam[];
+  teams?: ConfigTeam[];
+  leagues?: ConfigLeague[];
   notifyRole: string;
 }
 
 interface ConfigTeam {
+  teamId: string;
+  notifyRoleId: string;
+  channelId: string;
+}
+
+interface ConfigLeague {
   teamId: string;
   notifyRoleId: string;
   channelId: string;
@@ -68,11 +75,45 @@ function scheduleDailyCheck() {
 
 async function checkUpcomingGames() {
 
-  const promises = config.teams.map(async (team) => {
+  const teamPromises = (config?.teams || []).map(async (team) => {
     await fetchUpcomingGames(team.teamId, team.notifyRoleId, team.channelId);
   });
 
-  await Promise.all(promises);
+  const leaguePromises = (config?.leagues || []).map(async (league) => {
+    await fetchUpcomingLeagueEvents(league.teamId, league.notifyRoleId, league.channelId);
+  });
+
+  await Promise.all([...teamPromises, ...leaguePromises]);
+}
+
+async function fetchUpcomingLeagueEvents(leagueId: string, ...args: any[]) {
+  try {
+    const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
+    const response = await fetch(url);
+    const responseJson = await response.json();
+    const events = responseJson.events;
+
+    if (events && events.length > 0) {
+      for (const event of events) {
+        const gameDate = new Date(event.dateEvent + ' ' + event.strTime);
+        const game = {
+          eventId: event.idEvent,
+          eventName: event.strEvent,
+          eventDate: gameDate,
+          notified: false,
+          leagueId,
+          ...args,
+        };
+        await gamesCollection.updateOne(
+          { eventId: event.idEvent },
+          { $set: game },
+          { upsert: true }
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching upcoming games:', error);
+  }
 }
 
 async function fetchUpcomingGames(teamId: string, ...args: any[]) {
@@ -111,7 +152,7 @@ async function checkDatabaseForNotifications() {
   try {
     const games = await gamesCollection.find({ eventDate: { $gte: tenMinutesAgo, }, notified: false }).toArray();
     for (const game of games) {
-      const channel = client.channels.cache.get(game.channelId!) as TextChannel;
+      const channel = client.ch annels.cache.get(game.channelId!) as TextChannel;
       if (channel) {
         channel.send(`<@&${game.notifyRoleId}> A game is coming up: ${game.eventName} on ${game.eventDate.toDateString()} at ${game.eventDate.toTimeString()}`);
         await gamesCollection.updateOne(
