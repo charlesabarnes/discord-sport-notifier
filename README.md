@@ -30,7 +30,7 @@ This project is a Discord bot that notifies specific roles when a sports game is
 2. **Set your environment variables:**
     ```
     DISCORD_TOKEN=your-discord-bot-token
-    TV_DB_API_KEY=your-tv-db-api-key
+    SPORTSDB_API_KEY=your-tv-db-api-key
     MONGODB_URI=your-mongodb-connection-string
     DB_NAME=sportsdb
     COLLECTION_NAME=games

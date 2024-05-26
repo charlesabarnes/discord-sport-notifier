@@ -7,7 +7,7 @@ dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const TV_DB_API_KEY = process.env.TV_DB_API_KEY;
+const SPORTSDB_API_KEY = process.env.SPORTSDB_API_KEY;
 const MONGODB_URI = process.env.MONGODB_URI; // Your MongoDB connection string
 const DB_NAME = process.env.DB_NAME || 'sportsdb';
 const COLLECTION_NAME =  process.env.COLLECTION_NAME || 'games';
@@ -77,7 +77,7 @@ async function checkUpcomingGames() {
 
 async function fetchUpcomingGames(teamId: string, ...args: any[]) {
   try {
-    const url=`https://www.thesportsdb.com/api/v1/json/${TV_DB_API_KEY}/eventsnext.php?id=${teamId}`;
+    const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnext.php?id=${teamId}`;
     const response = await fetch(url);
     const responseJson = await response.json();
     const events = responseJson.events;
