@@ -100,7 +100,6 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
           eventId: event.idEvent,
           eventName: event.strEvent,
           eventDate: gameDate,
-          notified: false,
           leagueId,
           notifyRoleId,
           channelId: leagueChannelId,
@@ -153,7 +152,13 @@ async function checkDatabaseForNotifications() {
   const tenMinutesFromNow = new Date((new Date()).getTime() + 600000);
 
   try {
-    const games = await gamesCollection.find({ eventDate: { $gte: tenMinutesAgo, $lte: tenMinutesFromNow }, notified: false }).toArray();
+    const games = await gamesCollection.find({
+      eventDate: { $gte: tenMinutesAgo, $lte: tenMinutesFromNow },
+      $or: [
+        { notified: { $exists: false } },
+        { notified: false }
+      ]
+    }).toArray();
     for (const game of games) {
       const channel = client.channels.cache.get(game.channelId!) as TextChannel;
       if (channel) {
