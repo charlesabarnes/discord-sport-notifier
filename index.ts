@@ -130,7 +130,6 @@ async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueCh
           eventId: event.idEvent,
           eventName: event.strEvent,
           eventDate: gameDate,
-          notified: false,
           teamId,
           notifyRoleId,
           channelId: leagueChannelId,
