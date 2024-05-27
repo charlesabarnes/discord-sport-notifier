@@ -17,10 +17,10 @@ jobs:
       uses: docker/setup-buildx-action@v2
 
     - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ghcr.io/${{ github.repository_owner }}/my-image-name:latest
+      run: docker build . --file Dockerfile --tag ghcr.io/charlesabarnes/discord-sport-notifier:latest
 
     - name: Push the Docker image
-      run: docker push ghcr.io/${{ github.repository_owner }}/my-image-name:latest
+      run: docker push ghcr.io/charlesabarnes/discord-sport-notifier:latest
