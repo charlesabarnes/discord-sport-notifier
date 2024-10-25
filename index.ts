@@ -29,6 +29,7 @@ interface ConfigLeague {
   leagueId: string;
   notifyRoleId: string;
   channelId: string;
+  excludedWords?: string[];
 }
 
 type Game = {
@@ -80,13 +81,13 @@ async function checkUpcomingGames() {
   });
 
   const leaguePromises = (config?.leagues || []).map(async (league) => {
-    await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId);
+    await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId, league.excludedWords);
   });
 
   await Promise.all([...teamPromises, ...leaguePromises]);
 }
 
-async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string) {
+async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string, excludedWords?: string[]) {
   try {
     const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
     const response = await fetch(url);
@@ -95,6 +96,14 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
 
     if (events && events.length > 0) {
       for (const event of events) {
+
+        if (excludedWords && excludedWords.length > 0) {
+          const excluded = excludedWords.some(word => event.strEvent.toLowerCase().includes(word.toLowerCase()));
+          if (excluded) {
+            continue;
+          }
+        }
+
         const gameDate = new Date(event.dateEvent + ' ' + event.strTime);
         const game = {
           eventId: event.idEvent,
