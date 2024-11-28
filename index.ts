@@ -89,17 +89,19 @@ async function checkUpcomingGames() {
 
 async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string, excludedWords?: string[]) {
   try {
-    const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
+    const url = `https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
     const response = await fetch(url);
     const responseJson = await response.json();
     const events = responseJson.events;
 
     if (events && events.length > 0) {
       for (const event of events) {
-
         if (excludedWords && excludedWords.length > 0) {
-          const excluded = excludedWords.some(word => event.strEvent.toLowerCase().includes(word.toLowerCase()));
+          const excluded = excludedWords.some(word => 
+            event.strEvent.toLowerCase().includes(word.toLowerCase())
+          );
           if (excluded) {
+            console.log(`Excluded event: ${event.strEvent}`);
             continue;
           }
         }
@@ -109,7 +111,6 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
           eventId: event.idEvent,
           eventName: event.strEvent,
           eventDate: gameDate,
-          leagueId,
           notifyRoleId,
           channelId: leagueChannelId,
         };
@@ -121,7 +122,7 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
       }
     }
   } catch (error) {
-    console.error('Error fetching upcoming games:', error);
+    console.error('Error fetching upcoming league events:', error);
   }
 }
 
@@ -177,7 +178,6 @@ async function checkDatabaseForNotifications() {
           { $set: { notified: true } }
         );
       }
-    
     }
   } catch (error) {
     console.error('Error checking database for notifications:', error);
