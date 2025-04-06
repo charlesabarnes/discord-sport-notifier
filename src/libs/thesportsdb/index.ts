@@ -44,16 +44,8 @@ class SportsDBSDK {
     return this.client.get(`/filter/events/${leagueId}/${season}`);
   }
 
-  async filterByChannel(channelName: string): Promise<FilterResponse<Event>> {
-    return this.client.get(`/filter/tv/channel/${channelName}`);
-  }
-
-  async filterByCountry(countryName: string): Promise<FilterResponse<Event>> {
-    return this.client.get(`/filter/tv/country/${countryName}`);
-  }
-
-  async filterBySport(sportName: string): Promise<FilterResponse<Event>> {
-    return this.client.get(`/filter/tv/sport/${sportName}`);
+  async filterTvEvents(platform: 'channel' | 'country' | 'sport', channelName: string): Promise<FilterResponse<Event>> {
+    return this.client.get(`/filter/tv/${platform}/${channelName}`);
   }
 
   async all<T extends keyof AllEntities>(entity: T): Promise<AllResponse<AllEntities[T]>> {

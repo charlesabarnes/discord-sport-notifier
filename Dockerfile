@@ -16,5 +16,8 @@ COPY . .
 # Compile TypeScript code
 RUN npm run build
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Expose the UI port
+EXPOSE 3000
+
+# Start both the bot and the UI
+CMD ["npm", "run", "start:all"]

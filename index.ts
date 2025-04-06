@@ -1,7 +1,8 @@
 import { Client, GatewayIntentBits, TextChannel } from 'discord.js';
 import * as dotenv from 'dotenv';
 import { MongoClient, Db, Collection } from 'mongodb';
-import { readFileSync } from 'fs';
+import mongoose from 'mongoose';
+import { connectToDatabase, getConfigFromMongoDB, Config, ConfigTeam, ConfigLeague } from './src/models/db';
 
 dotenv.config();
 
@@ -10,36 +11,20 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const SPORTSDB_API_KEY = process.env.SPORTSDB_API_KEY;
 const MONGODB_URI = process.env.MONGODB_URI; // Your MongoDB connection string
 const DB_NAME = process.env.DB_NAME || 'sportsdb';
-const COLLECTION_NAME =  process.env.COLLECTION_NAME || 'games';
-
-
-interface Config {
-  teams?: ConfigTeam[];
-  leagues?: ConfigLeague[];
-  notifyRole: string;
-}
-
-interface ConfigTeam {
-  teamId: string;
-  notifyRoleId: string;
-  channelId: string;
-}
-
-interface ConfigLeague {
-  leagueId: string;
-  notifyRoleId: string;
-  channelId: string;
-  excludedWords?: string[];
-}
+const COLLECTION_NAME = process.env.COLLECTION_NAME || 'games';
 
 type Game = {
   eventId: string;
   eventName: string;
   eventDate: Date;
   notified: boolean;
-} & ConfigTeam;
+  teamId?: string;
+  notifyRoleId: string;
+  channelId: string;
+};
 
-const config: Config = JSON.parse(readFileSync('config.json', 'utf8'));
+// Initialize config
+let config: Config = { teams: [], leagues: [] };
 
 
 let db: Db;
@@ -47,18 +32,30 @@ let gamesCollection: Collection<Game>;
 
 const mongoClient = new MongoClient(MONGODB_URI!);
 
-async function connectToDatabase() {
+async function connectToMongoDBForGames() {
   await mongoClient.connect();
   db = mongoClient.db(DB_NAME);
   gamesCollection = db.collection(COLLECTION_NAME);
-  console.log('Connected to MongoDB');
+  console.log('Connected to MongoDB for games collection');
 }
 
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
+  
+  // Connect to MongoDB for our games collection
+  await connectToMongoDBForGames();
+  
+  // Connect to Mongoose for config
   await connectToDatabase();
+  
+  // Get the configuration from MongoDB
+  const env = process.env.NODE_ENV || 'production';
+  config = await getConfigFromMongoDB(env);
+  console.log(`Loaded config from MongoDB for ${env} environment: ${config.teams.length} teams, ${config.leagues.length} leagues`);
+  
+  // Start the scheduling
   scheduleDailyCheck();
-  checkUpcomingGames()
+  checkUpcomingGames();
   setInterval(checkDatabaseForNotifications, 60*1000); // Check every 1 minute
 });
 

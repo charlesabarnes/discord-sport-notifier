@@ -1,0 +1,49 @@
+{
+  "teams": [
+    {
+      "teamId": "135280",
+      "notifyRoleId": "1244111381310210079",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "139089",
+      "notifyRoleId": "1244111776040353813",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "147062",
+      "notifyRoleId": "1244112601466540083",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "134859",
+      "notifyRoleId": "1244113175876599860",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "134886",
+      "notifyRoleId": "1244112120946102302",
+      "channelId": "565267644627025930"
+    },
+    {
+      "teamId": "134867",
+      "notifyRoleId": "1338717587672006747",
+      "channelId": "565267644627025930"
+    }
+  ],
+  "leagues": [
+    {
+      "leagueId": "4370",
+      "notifyRoleId": "1244253264787279873",
+      "channelId": "565267644627025930",
+      "excludedWords": [
+        "practice"
+      ]
+    },
+    {
+      "leagueId": "4407",
+      "notifyRoleId": "1244253348581081213",
+      "channelId": "565267644627025930"
+    }
+  ]
+}
