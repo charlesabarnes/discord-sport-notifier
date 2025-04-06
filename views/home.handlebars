@@ -12,6 +12,30 @@
   teams: [],
   leagues: [],
   
+  // Function to determine contrast color (black or white) based on background color
+  getContrastColor(hexColor) {
+    // Default to black if no color is provided
+    if (!hexColor || hexColor === '#000000') return '#ffffff';
+    if (hexColor === '#ffffff') return '#000000';
+    
+    // Convert hex to RGB
+    let r, g, b;
+    if (hexColor.startsWith('#')) {
+      const hex = hexColor.slice(1);
+      r = parseInt(hex.slice(0,2), 16);
+      g = parseInt(hex.slice(2,4), 16);
+      b = parseInt(hex.slice(4,6), 16);
+    } else {
+      return '#000000'; // Default to black for unknown formats
+    }
+    
+    // Calculate relative luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for light colors, white for dark colors
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  },
+  
   async selectGuild(guildId) {
     this.selectedGuildId = guildId;
     try {
@@ -270,7 +294,9 @@
                 <td class="py-3 px-4">
                   <template x-for="role in guildData.roles" :key="role.id">
                     <template x-if="role.id === team.notifyRoleId">
-                      <span class="px-2 py-1 rounded text-xs" :style="'background-color: ' + role.color" x-text="role.name"></span>
+                      <span class="px-2 py-1 rounded text-xs" 
+                            :style="`background-color: ${role.color}; color: ${getContrastColor(role.color)}`" 
+                            x-text="role.name"></span>
                     </template>
                   </template>
                   <span class="text-gray-500 text-xs" x-text="'(' + team.notifyRoleId + ')'"></span>
@@ -443,7 +469,9 @@
                 <td class="py-3 px-4">
                   <template x-for="role in guildData.roles" :key="role.id">
                     <template x-if="role.id === league.notifyRoleId">
-                      <span class="px-2 py-1 rounded text-xs" :style="'background-color: ' + role.color" x-text="role.name"></span>
+                      <span class="px-2 py-1 rounded text-xs" 
+                            :style="`background-color: ${role.color}; color: ${getContrastColor(role.color)}`" 
+                            x-text="role.name"></span>
                     </template>
                   </template>
                   <span class="text-gray-500 text-xs" x-text="'(' + league.notifyRoleId + ')'"></span>
