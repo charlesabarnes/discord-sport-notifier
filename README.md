@@ -157,6 +157,10 @@ Pre-built Docker images are available on GitHub Container Registry:
 ghcr.io/charlesabarnes/discord-sport-notifier:latest
 ```
 
+## Screenshot
+
+![Discord Sport Notifier Screenshot](discord_sports_notifier.jpg)
+
 ## Setting up in Unraid
 
 1. Add the Docker image from GitHub Packages:
