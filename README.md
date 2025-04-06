@@ -145,5 +145,43 @@ The bot supports different configurations for different environments. You can:
 The application can be run using Docker:
 
 ```sh
-docker-compose up
+# Using docker-compose
+docker-compose up -d
+
+# Or using Docker directly
+docker run -d \
+  -e DISCORD_TOKEN=your_token \
+  -e SPORTSDB_API_KEY=your_key \
+  -e MONGODB_URI=your_mongodb_uri \
+  -p 3000:3000 \
+  -v /path/to/config.json:/app/config.json \
+  ghcr.io/charlesabarnes/discord-sport-notifier:latest
 ```
+
+### Pre-built Docker Images
+
+Pre-built Docker images are available on GitHub Container Registry:
+
+```
+ghcr.io/charlesabarnes/discord-sport-notifier:latest
+ghcr.io/charlesabarnes/discord-sport-notifier:f-live-scores
+```
+
+## Setting up in Unraid
+
+1. Add the Docker image from GitHub Packages:
+   - Repository: `ghcr.io/charlesabarnes/discord-sport-notifier`
+   - Tag: `latest` or `f-live-scores` for the live scores feature
+
+2. Set the required environment variables in the Unraid Docker template:
+   - DISCORD_TOKEN
+   - SPORTSDB_API_KEY
+   - MONGODB_URI
+
+3. Add volume mappings:
+   - Host Path: `/path/to/your/config.json`
+   - Container Path: `/app/config.json`
+
+4. Map port 3000 to access the web UI
+
+5. Set container to auto-start and restart policy to "unless-stopped"
