@@ -1,12 +1,17 @@
 version: '3.8'
 
 services:
-  bot:
+  app:
     build: .
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - SPORTSDB_API_KEY=${SPORTSDB_API_KEY}
       - MONGODB_URI=${MONGODB_URI}
+      - UI_PORT=${UI_PORT:-3000}
+      - NODE_ENV=${NODE_ENV:-production}
     volumes:
-      - .:/app
-    command: npm start
+      - ./config.json:/app/config.json
+      - ./config.*.json:/app/config.*.json
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    restart: unless-stopped

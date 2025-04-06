@@ -36,7 +36,9 @@
       "leagueId": "4370",
       "notifyRoleId": "1244253264787279873",
       "channelId": "565267644627025930",
-      "excludedWords": ["practice"]
+      "excludedWords": [
+        "practice"
+      ]
     },
     {
       "leagueId": "4407",

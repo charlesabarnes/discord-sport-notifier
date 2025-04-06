@@ -1,0 +1,671 @@
+<div x-data="{
+  // No environment needed
+  activeTab: 'teams',
+  selectedGuildId: null,
+  selectedTeam: null,
+  selectedLeague: null,
+  guildData: { channels: [], roles: [] },
+  teamSearchResults: [],
+  leagueSearchResults: [],
+  teamSearchQuery: '',
+  leagueSearchQuery: '',
+  teams: [],
+  leagues: [],
+  
+  async selectGuild(guildId) {
+    this.selectedGuildId = guildId;
+    try {
+      // Get guild channels and roles
+      const response = await fetch(`/api/discord/guilds/${guildId}`);
+      this.guildData = await response.json();
+      
+      // Check if there's an error message
+      if (this.guildData.error) {
+        alert(`Error: ${this.guildData.error}`);
+      }
+      
+      // Load teams and leagues for this guild
+      await this.loadTeams();
+      await this.loadLeagues();
+      
+    } catch (error) {
+      console.error('Error fetching guild data:', error);
+      alert('Failed to fetch guild data. Please check console for details.');
+    }
+  },
+  
+  async loadTeams() {
+    try {
+      const response = await fetch(`/api/teams?guildId=${this.selectedGuildId}`);
+      this.teams = await response.json();
+    } catch (error) {
+      console.error('Error loading teams:', error);
+    }
+  },
+  
+  async loadLeagues() {
+    try {
+      const response = await fetch(`/api/leagues?guildId=${this.selectedGuildId}`);
+      this.leagues = await response.json();
+    } catch (error) {
+      console.error('Error loading leagues:', error);
+    }
+  },
+  
+  async searchTeams() {
+    if (!this.teamSearchQuery || this.teamSearchQuery.length < 3) return;
+    
+    try {
+      const response = await fetch(`/api/sportsdb/search/teams?q=${encodeURIComponent(this.teamSearchQuery)}`);
+      this.teamSearchResults = await response.json();
+    } catch (error) {
+      console.error('Error searching teams:', error);
+    }
+  },
+  
+  selectTeam(team) {
+    this.selectedTeam = team;
+    this.teamSearchResults = [];
+  },
+  
+  async searchLeagues() {
+    if (!this.leagueSearchQuery || this.leagueSearchQuery.length < 3) return;
+    
+    try {
+      const response = await fetch(`/api/sportsdb/search/leagues?q=${encodeURIComponent(this.leagueSearchQuery)}`);
+      this.leagueSearchResults = await response.json();
+    } catch (error) {
+      console.error('Error searching leagues:', error);
+    }
+  },
+  
+  selectLeague(league) {
+    this.selectedLeague = league;
+    this.leagueSearchResults = [];
+  },
+  
+  async addTeam() {
+    if (!this.selectedTeam || !this.selectedGuildId) {
+      alert('Please select a team and a server');
+      return;
+    }
+    
+    const channelId = document.getElementById('teamChannelId').value;
+    const notifyRoleId = document.getElementById('teamNotifyRoleId').value;
+    
+    if (!channelId || !notifyRoleId) {
+      alert('Please select both a channel and a role');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teamId: this.selectedTeam.idTeam,
+          teamName: this.selectedTeam.strTeam,
+          teamLogo: this.selectedTeam.strTeamBadge || this.selectedTeam.strTeamLogo,
+          guildId: this.selectedGuildId,
+          channelId: channelId,
+          notifyRoleId: notifyRoleId
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Reset form
+        this.selectedTeam = null;
+        this.teamSearchQuery = '';
+        document.getElementById('teamChannelId').value = '';
+        document.getElementById('teamNotifyRoleId').value = '';
+        
+        // Reload teams
+        await this.loadTeams();
+      } else {
+        alert(`Error: ${result.error || 'Failed to add team'}`);
+      }
+    } catch (error) {
+      console.error('Error adding team:', error);
+      alert('Failed to add team. Please check console for details.');
+    }
+  },
+  
+  async addLeague() {
+    if (!this.selectedLeague || !this.selectedGuildId) {
+      alert('Please select a league and a server');
+      return;
+    }
+    
+    const channelId = document.getElementById('leagueChannelId').value;
+    const notifyRoleId = document.getElementById('leagueNotifyRoleId').value;
+    const excludedWords = document.getElementById('leagueExcludedWords').value;
+    
+    if (!channelId || !notifyRoleId) {
+      alert('Please select both a channel and a role');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/leagues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          leagueId: this.selectedLeague.idLeague,
+          leagueName: this.selectedLeague.strLeague,
+          leagueLogo: this.selectedLeague.strBadge || this.selectedLeague.strLogo,
+          guildId: this.selectedGuildId,
+          channelId: channelId,
+          notifyRoleId: notifyRoleId,
+          excludedWords: excludedWords
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Reset form
+        this.selectedLeague = null;
+        this.leagueSearchQuery = '';
+        document.getElementById('leagueChannelId').value = '';
+        document.getElementById('leagueNotifyRoleId').value = '';
+        document.getElementById('leagueExcludedWords').value = '';
+        
+        // Reload leagues
+        await this.loadLeagues();
+      } else {
+        alert(`Error: ${result.error || 'Failed to add league'}`);
+      }
+    } catch (error) {
+      console.error('Error adding league:', error);
+      alert('Failed to add league. Please check console for details.');
+    }
+  }
+}">
+  <!-- Server Selection -->
+  <div class="mb-6">
+    <h2 class="text-xl font-semibold mb-3">Select Discord Server</h2>
+    <div class="mb-3 bg-blue-50 border border-blue-200 p-3 rounded-md text-sm text-blue-800">
+      <strong>Discord Bot Status:</strong> <span class="{{#if (eq discordBotStatus 'Connected')}}text-green-600{{else}}text-red-600{{/if}}">{{discordBotStatus}}</span><br>
+      <strong>Note:</strong> The bot must be a member of your Discord server to access channels and roles. If you don't see your server or get an error, please invite the bot to your server first.
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      {{#each guilds}}
+        <button 
+          class="p-3 border rounded-md text-center transition-all flex flex-col items-center justify-center" 
+          :class="selectedGuildId === '{{this.id}}' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'"
+          @click="selectGuild('{{this.id}}')"
+        >
+          {{#if this.icon}}
+            <img src="https://cdn.discordapp.com/icons/{{this.id}}/{{this.icon}}.png" alt="{{this.name}}" class="w-12 h-12 rounded-full mb-2">
+          {{else}}
+            <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mb-2">
+              <span class="text-lg font-bold text-gray-500">{{firstChar this.name}}</span>
+            </div>
+          {{/if}}
+          <span class="text-sm font-medium truncate w-full">{{this.name}}</span>
+        </button>
+      {{/each}}
+    </div>
+  </div>
+
+  <!-- No environment selection needed -->
+
+  <!-- Tabs -->
+  <div class="mb-6" x-show="selectedGuildId">
+    <div class="border-b border-gray-200">
+      <div class="flex -mb-px">
+        <button 
+          class="py-2 px-4 text-center border-b-2 transition-all" 
+          :class="activeTab === 'teams' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:border-gray-300'" 
+          @click="activeTab = 'teams'"
+        >
+          Teams
+        </button>
+        <button 
+          class="py-2 px-4 text-center border-b-2 transition-all" 
+          :class="activeTab === 'leagues' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:border-gray-300'" 
+          @click="activeTab = 'leagues'"
+        >
+          Leagues
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams Tab Content -->
+  <div x-show="activeTab === 'teams' && selectedGuildId">
+    <div class="mb-6">
+      <h2 class="text-lg font-medium mb-4">Configure Teams</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+          <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+              <th class="py-3 px-4 text-left">Team</th>
+              <th class="py-3 px-4 text-left">Notify Role</th>
+              <th class="py-3 px-4 text-left">Channel</th>
+              <th class="py-3 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teams-table-body">
+            <template x-for="team in teams" :key="team._id">
+              <tr class="border-b border-gray-200 hover:bg-gray-50">
+                <td class="py-3 px-4">
+                  <div class="flex items-center">
+                    <template x-if="team.teamLogo">
+                      <img :src="team.teamLogo" class="w-8 h-8 mr-2" alt="Team logo" onerror="this.style.display='none'">
+                    </template>
+                    <div>
+                      <div x-text="team.teamName" class="font-medium"></div>
+                      <div class="text-gray-500 text-xs" x-text="'ID: ' + team.teamId"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3 px-4">
+                  <template x-for="role in guildData.roles" :key="role.id">
+                    <template x-if="role.id === team.notifyRoleId">
+                      <span class="px-2 py-1 rounded text-xs" :style="'background-color: ' + role.color" x-text="role.name"></span>
+                    </template>
+                  </template>
+                  <span class="text-gray-500 text-xs" x-text="'(' + team.notifyRoleId + ')'"></span>
+                </td>
+                <td class="py-3 px-4">
+                  <template x-for="channel in guildData.channels" :key="channel.id">
+                    <template x-if="channel.id === team.channelId">
+                      <span x-text="'#' + channel.name"></span>
+                    </template>
+                  </template>
+                  <span class="text-gray-500 text-xs" x-text="'(' + team.channelId + ')'"></span>
+                </td>
+                <td class="py-3 px-4 text-center">
+                  <button 
+                    class="text-red-500 hover:text-red-700"
+                    @click="if(confirm('Are you sure you want to delete this team?')) {
+                      fetch(`/api/teams/${team.teamId}?guildId=${selectedGuildId}`, {
+                        method: 'DELETE'
+                      }).then(response => response.json())
+                        .then(data => {
+                          if(data.success) loadTeams();
+                          else alert('Error: ' + (data.error || 'Failed to delete team'));
+                        })
+                        .catch(err => {
+                          console.error('Error deleting team:', err);
+                          alert('Failed to delete team');
+                        });
+                    }"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="teams.length === 0">
+              <td colspan="4" class="py-4 text-center text-gray-500">
+                No teams configured for this server. Add your first team below.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-md">
+      <h3 class="text-md font-medium mb-3">Add New Team</h3>
+      <div>
+        <!-- No environment needed -->
+        <input type="hidden" id="teamGuildId" :value="selectedGuildId">
+        
+        <!-- Team Search -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search for team</label>
+          <div class="relative">
+            <input 
+              type="text" 
+              x-model="teamSearchQuery" 
+              @input="searchTeams()" 
+              @keydown.enter.prevent
+              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+              placeholder="Enter team name (min 3 characters)"
+            >
+            <div 
+              x-show="teamSearchResults.length > 0"
+              class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            >
+              <template x-for="team in teamSearchResults" :key="team.idTeam">
+                <div 
+                  class="p-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                  @click="selectTeam(team)"
+                >
+                  <img :src="team.strTeamBadge || team.strTeamLogo" class="w-8 h-8 mr-2" onerror="this.style.display='none'">
+                  <div>
+                    <div x-text="team.strTeam" class="font-medium"></div>
+                    <div x-text="team.strLeague" class="text-xs text-gray-500"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Team Display -->
+        <div class="mb-4" x-show="selectedTeam">
+          <div class="p-3 border border-gray-300 rounded-md bg-white">
+            <div class="flex items-center">
+              <img :src="selectedTeam?.strTeamBadge || selectedTeam?.strTeamLogo" class="w-12 h-12 mr-3" onerror="this.style.display='none'">
+              <div>
+                <div x-text="selectedTeam?.strTeam" class="font-medium"></div>
+                <div x-text="selectedTeam?.strLeague" class="text-sm text-gray-600"></div>
+              </div>
+              <button type="button" @click="selectedTeam = null" class="ml-auto text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Channel Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Channel</label>
+            <select id="teamChannelId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              <option value="">Select Channel</option>
+              <template x-for="channel in guildData.channels" :key="channel.id">
+                <option :value="channel.id" x-text="`#${channel.name}`"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Role Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notify Role</label>
+            <select id="teamNotifyRoleId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              <option value="">Select Role</option>
+              <template x-for="role in guildData.roles" :key="role.id">
+                <option :value="role.id" x-text="role.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button 
+            type="button" 
+            class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            :disabled="!selectedTeam"
+            :class="!selectedTeam ? 'opacity-50 cursor-not-allowed' : ''"
+            @click="addTeam()"
+          >
+            Add Team
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leagues Tab Content -->
+  <div x-show="activeTab === 'leagues' && selectedGuildId">
+    <div class="mb-6">
+      <h2 class="text-lg font-medium mb-4">Configure Leagues</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+          <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+              <th class="py-3 px-4 text-left">League</th>
+              <th class="py-3 px-4 text-left">Notify Role</th>
+              <th class="py-3 px-4 text-left">Channel</th>
+              <th class="py-3 px-4 text-left">Excluded Words</th>
+              <th class="py-3 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leagues-table-body">
+            <template x-for="league in leagues" :key="league._id">
+              <tr class="border-b border-gray-200 hover:bg-gray-50">
+                <td class="py-3 px-4">
+                  <div class="flex items-center">
+                    <template x-if="league.leagueLogo">
+                      <img :src="league.leagueLogo" class="w-8 h-8 mr-2" alt="League logo" onerror="this.style.display='none'">
+                    </template>
+                    <div>
+                      <div x-text="league.leagueName" class="font-medium"></div>
+                      <div class="text-gray-500 text-xs" x-text="'ID: ' + league.leagueId"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3 px-4">
+                  <template x-for="role in guildData.roles" :key="role.id">
+                    <template x-if="role.id === league.notifyRoleId">
+                      <span class="px-2 py-1 rounded text-xs" :style="'background-color: ' + role.color" x-text="role.name"></span>
+                    </template>
+                  </template>
+                  <span class="text-gray-500 text-xs" x-text="'(' + league.notifyRoleId + ')'"></span>
+                </td>
+                <td class="py-3 px-4">
+                  <template x-for="channel in guildData.channels" :key="channel.id">
+                    <template x-if="channel.id === league.channelId">
+                      <span x-text="'#' + channel.name"></span>
+                    </template>
+                  </template>
+                  <span class="text-gray-500 text-xs" x-text="'(' + league.channelId + ')'"></span>
+                </td>
+                <td class="py-3 px-4" x-text="league.excludedWords && league.excludedWords.length > 0 ? league.excludedWords.join(', ') : '-'"></td>
+                <td class="py-3 px-4 text-center">
+                  <button 
+                    class="text-red-500 hover:text-red-700"
+                    @click="if(confirm('Are you sure you want to delete this league?')) {
+                      fetch(`/api/leagues/${league.leagueId}?guildId=${selectedGuildId}`, {
+                        method: 'DELETE'
+                      }).then(response => response.json())
+                        .then(data => {
+                          if(data.success) loadLeagues();
+                          else alert('Error: ' + (data.error || 'Failed to delete league'));
+                        })
+                        .catch(err => {
+                          console.error('Error deleting league:', err);
+                          alert('Failed to delete league');
+                        });
+                    }"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="leagues.length === 0">
+              <td colspan="5" class="py-4 text-center text-gray-500">
+                No leagues configured for this server. Add your first league below.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-md">
+      <h3 class="text-md font-medium mb-3">Add New League</h3>
+      <div>
+        <!-- No environment needed -->
+        <input type="hidden" id="leagueGuildId" :value="selectedGuildId">
+        
+        <!-- League Search -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search for league</label>
+          <div class="relative">
+            <input 
+              type="text" 
+              x-model="leagueSearchQuery" 
+              @input="searchLeagues()" 
+              @keydown.enter.prevent
+              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
+              placeholder="Enter league name (min 3 characters)"
+            >
+            <div 
+              x-show="leagueSearchResults.length > 0"
+              class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            >
+              <template x-for="league in leagueSearchResults" :key="league.idLeague">
+                <div 
+                  class="p-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                  @click="selectLeague(league)"
+                >
+                  <img :src="league.strBadge || league.strLogo" class="w-8 h-8 mr-2" onerror="this.style.display='none'">
+                  <div>
+                    <div x-text="league.strLeague" class="font-medium"></div>
+                    <div x-text="league.strCountry" class="text-xs text-gray-500"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected League Display -->
+        <div class="mb-4" x-show="selectedLeague">
+          <div class="p-3 border border-gray-300 rounded-md bg-white">
+            <div class="flex items-center">
+              <img :src="selectedLeague?.strBadge || selectedLeague?.strLogo" class="w-12 h-12 mr-3" onerror="this.style.display='none'">
+              <div>
+                <div x-text="selectedLeague?.strLeague" class="font-medium"></div>
+                <div x-text="selectedLeague?.strCountry" class="text-sm text-gray-600"></div>
+              </div>
+              <button type="button" @click="selectedLeague = null" class="ml-auto text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Channel Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Channel</label>
+            <select id="leagueChannelId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              <option value="">Select Channel</option>
+              <template x-for="channel in guildData.channels" :key="channel.id">
+                <option :value="channel.id" x-text="`#${channel.name}`"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Role Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notify Role</label>
+            <select id="leagueNotifyRoleId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+              <option value="">Select Role</option>
+              <template x-for="role in guildData.roles" :key="role.id">
+                <option :value="role.id" x-text="role.name"></option>
+              </template>
+            </select>
+          </div>
+
+          <!-- Excluded Words -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Excluded Words (comma separated)</label>
+            <input type="text" id="leagueExcludedWords" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="e.g. practice, training, interview">
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button 
+            type="button" 
+            class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            :disabled="!selectedLeague"
+            :class="!selectedLeague ? 'opacity-50 cursor-not-allowed' : ''"
+            @click="addLeague()"
+          >
+            Add League
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions when no server is selected -->
+  <div x-show="!selectedGuildId" class="text-center p-8 bg-gray-50 rounded-md">
+    <h3 class="text-lg font-medium text-gray-700 mb-2">Select a Discord Server</h3>
+    <p class="text-gray-600">Please select a Discord server from the list above to configure sports notifications.</p>
+  </div>
+</div>
+
+<script>
+  function loadEnvironmentData(env) {
+    fetch(`/api/config?env=${env}`)
+      .then(response => response.json())
+      .then(data => {
+        updateTeamsTable(data.teams, env);
+        updateLeaguesTable(data.leagues, env);
+      })
+      .catch(error => console.error('Error loading environment data:', error));
+  }
+
+  function updateTeamsTable(teams, env) {
+    const tableBody = document.getElementById('teams-table-body');
+    if (!tableBody) return;
+    
+    let html = '';
+    
+    teams.forEach(team => {
+      html += `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="py-3 px-4">${team.teamId}</td>
+          <td class="py-3 px-4">${team.notifyRoleId}</td>
+          <td class="py-3 px-4">${team.channelId}</td>
+          <td class="py-3 px-4 text-center">
+            <button 
+              class="text-red-500 hover:text-red-700"
+              hx-delete="/api/teams/${team.teamId}?env=${env}"
+              hx-confirm="Are you sure you want to delete this team?"
+              hx-target="#teams-table-body"
+              hx-swap="outerHTML"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    tableBody.innerHTML = html;
+  }
+
+  function updateLeaguesTable(leagues, env) {
+    const tableBody = document.getElementById('leagues-table-body');
+    if (!tableBody) return;
+    
+    let html = '';
+    
+    leagues.forEach(league => {
+      html += `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="py-3 px-4">${league.leagueId}</td>
+          <td class="py-3 px-4">${league.notifyRoleId}</td>
+          <td class="py-3 px-4">${league.channelId}</td>
+          <td class="py-3 px-4">${league.excludedWords ? league.excludedWords.join(', ') : '-'}</td>
+          <td class="py-3 px-4 text-center">
+            <button 
+              class="text-red-500 hover:text-red-700"
+              hx-delete="/api/leagues/${league.leagueId}?env=${env}"
+              hx-confirm="Are you sure you want to delete this league?"
+              hx-target="#leagues-table-body"
+              hx-swap="outerHTML"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    tableBody.innerHTML = html;
+  }
+</script>

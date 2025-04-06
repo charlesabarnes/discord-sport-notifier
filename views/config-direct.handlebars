@@ -1,0 +1,270 @@
+<div x-data="{ activeEnvironment: '{{currentEnv}}', activeTab: 'teams' }">
+  <div class="mb-6">
+    <div class="flex justify-between items-center">
+      <h2 class="text-xl font-semibold">Environment</h2>
+      <div class="text-red-600 bg-red-100 px-4 py-2 rounded-md text-sm">
+        <strong>Note:</strong> Discord OAuth is disabled. Using direct configuration mode.
+      </div>
+    </div>
+    <div class="flex space-x-4 mt-3">
+      {{#each environments}}
+        <button 
+          class="px-4 py-2 rounded-md transition-all" 
+          :class="activeEnvironment === '{{this}}' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'" 
+          @click="activeEnvironment = '{{this}}'; loadEnvironmentData('{{this}}')"
+        >
+          {{this}}
+        </button>
+      {{/each}}
+    </div>
+  </div>
+
+  <div class="mb-6">
+    <div class="border-b border-gray-200">
+      <div class="flex -mb-px">
+        <button 
+          class="py-2 px-4 text-center border-b-2 transition-all" 
+          :class="activeTab === 'teams' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:border-gray-300'" 
+          @click="activeTab = 'teams'"
+        >
+          Teams
+        </button>
+        <button 
+          class="py-2 px-4 text-center border-b-2 transition-all" 
+          :class="activeTab === 'leagues' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:border-gray-300'" 
+          @click="activeTab = 'leagues'"
+        >
+          Leagues
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams Tab Content -->
+  <div x-show="activeTab === 'teams'">
+    <div class="mb-6">
+      <h2 class="text-lg font-medium mb-4">Configure Teams</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+          <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+              <th class="py-3 px-4 text-left">Team ID</th>
+              <th class="py-3 px-4 text-left">Notify Role ID</th>
+              <th class="py-3 px-4 text-left">Channel ID</th>
+              <th class="py-3 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teams-table-body">
+            {{#each config.teams}}
+            <tr class="border-b border-gray-200 hover:bg-gray-50">
+              <td class="py-3 px-4">{{this.teamId}}</td>
+              <td class="py-3 px-4">{{this.notifyRoleId}}</td>
+              <td class="py-3 px-4">{{this.channelId}}</td>
+              <td class="py-3 px-4 text-center">
+                <button 
+                  class="text-red-500 hover:text-red-700"
+                  hx-delete="/api/teams/{{this.teamId}}?env={{../currentEnv}}"
+                  hx-confirm="Are you sure you want to delete this team?"
+                  hx-target="#teams-table-body"
+                  hx-swap="outerHTML"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-md">
+      <h3 class="text-md font-medium mb-3">Add New Team</h3>
+      <form hx-post="/api/teams" hx-target="#teams-table-body" hx-swap="outerHTML">
+        <input type="hidden" name="env" :value="activeEnvironment">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Team ID</label>
+            <input type="text" name="teamId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Search for team ID at <a href="https://www.thesportsdb.com/search_all_teams.php" target="_blank" class="text-blue-500 hover:underline">thesportsdb.com</a>
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notify Role ID</label>
+            <input type="text" name="notifyRoleId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Discord Role ID (enable Developer Mode in Discord to copy role IDs)
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Channel ID</label>
+            <input type="text" name="channelId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Discord Channel ID (enable Developer Mode in Discord to copy channel IDs)
+            </p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add Team</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Leagues Tab Content -->
+  <div x-show="activeTab === 'leagues'">
+    <div class="mb-6">
+      <h2 class="text-lg font-medium mb-4">Configure Leagues</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+          <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+              <th class="py-3 px-4 text-left">League ID</th>
+              <th class="py-3 px-4 text-left">Notify Role ID</th>
+              <th class="py-3 px-4 text-left">Channel ID</th>
+              <th class="py-3 px-4 text-left">Excluded Words</th>
+              <th class="py-3 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leagues-table-body">
+            {{#each config.leagues}}
+            <tr class="border-b border-gray-200 hover:bg-gray-50">
+              <td class="py-3 px-4">{{this.leagueId}}</td>
+              <td class="py-3 px-4">{{this.notifyRoleId}}</td>
+              <td class="py-3 px-4">{{this.channelId}}</td>
+              <td class="py-3 px-4">{{#if this.excludedWords}}{{this.excludedWords}}{{else}}-{{/if}}</td>
+              <td class="py-3 px-4 text-center">
+                <button 
+                  class="text-red-500 hover:text-red-700"
+                  hx-delete="/api/leagues/{{this.leagueId}}?env={{../currentEnv}}"
+                  hx-confirm="Are you sure you want to delete this league?"
+                  hx-target="#leagues-table-body"
+                  hx-swap="outerHTML"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-md">
+      <h3 class="text-md font-medium mb-3">Add New League</h3>
+      <form hx-post="/api/leagues" hx-target="#leagues-table-body" hx-swap="outerHTML">
+        <input type="hidden" name="env" :value="activeEnvironment">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">League ID</label>
+            <input type="text" name="leagueId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Search for league ID at <a href="https://www.thesportsdb.com/search_all_leagues.php" target="_blank" class="text-blue-500 hover:underline">thesportsdb.com</a>
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notify Role ID</label>
+            <input type="text" name="notifyRoleId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Discord Role ID (enable Developer Mode in Discord to copy role IDs)
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Channel ID</label>
+            <input type="text" name="channelId" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <p class="mt-1 text-xs text-gray-500">
+              Discord Channel ID (enable Developer Mode in Discord to copy channel IDs)
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Excluded Words (comma separated)</label>
+            <input type="text" name="excludedWords" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            <p class="mt-1 text-xs text-gray-500">
+              Words to exclude from league events, e.g., "practice, training"
+            </p>
+          </div>
+        </div>
+        <div class="mt-4">
+          <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add League</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function loadEnvironmentData(env) {
+    fetch(`/api/config?env=${env}`)
+      .then(response => response.json())
+      .then(data => {
+        updateTeamsTable(data.teams, env);
+        updateLeaguesTable(data.leagues, env);
+      })
+      .catch(error => console.error('Error loading environment data:', error));
+  }
+
+  function updateTeamsTable(teams, env) {
+    const tableBody = document.getElementById('teams-table-body');
+    if (!tableBody) return;
+    
+    let html = '';
+    
+    teams.forEach(team => {
+      html += `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="py-3 px-4">${team.teamId}</td>
+          <td class="py-3 px-4">${team.notifyRoleId}</td>
+          <td class="py-3 px-4">${team.channelId}</td>
+          <td class="py-3 px-4 text-center">
+            <button 
+              class="text-red-500 hover:text-red-700"
+              hx-delete="/api/teams/${team.teamId}?env=${env}"
+              hx-confirm="Are you sure you want to delete this team?"
+              hx-target="#teams-table-body"
+              hx-swap="outerHTML"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    tableBody.innerHTML = html;
+  }
+
+  function updateLeaguesTable(leagues, env) {
+    const tableBody = document.getElementById('leagues-table-body');
+    if (!tableBody) return;
+    
+    let html = '';
+    
+    leagues.forEach(league => {
+      html += `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="py-3 px-4">${league.leagueId}</td>
+          <td class="py-3 px-4">${league.notifyRoleId}</td>
+          <td class="py-3 px-4">${league.channelId}</td>
+          <td class="py-3 px-4">${league.excludedWords ? league.excludedWords.join(', ') : '-'}</td>
+          <td class="py-3 px-4 text-center">
+            <button 
+              class="text-red-500 hover:text-red-700"
+              hx-delete="/api/leagues/${league.leagueId}?env=${env}"
+              hx-confirm="Are you sure you want to delete this league?"
+              hx-target="#leagues-table-body"
+              hx-swap="outerHTML"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    tableBody.innerHTML = html;
+  }
+</script>
