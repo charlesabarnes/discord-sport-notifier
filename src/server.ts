@@ -247,28 +247,36 @@ interface Config {
   leagues: ConfigLeague[];
 }
 
-// Configuration helper functions
-function getConfig(): Config {
+// Configuration helper functions - now using MongoDB
+async function getConfig(): Promise<Config> {
   try {
-    const configPath = path.join(process.cwd(), 'config.json');
+    const teams = await Team.find({});
+    const leagues = await League.find({});
     
-    const configFile = fs.readFileSync(configPath, 'utf8');
-    return JSON.parse(configFile);
+    return {
+      teams: teams.map(team => ({
+        teamId: team.teamId,
+        notifyRoleId: team.notifyRoleId,
+        channelId: team.channelId
+      })),
+      leagues: leagues.map(league => ({
+        leagueId: league.leagueId,
+        notifyRoleId: league.notifyRoleId,
+        channelId: league.channelId,
+        excludedWords: league.excludedWords
+      }))
+    };
   } catch (error) {
-    console.error('Error reading config:', error);
-    // Return empty config if file doesn't exist
+    console.error('Error reading config from MongoDB:', error);
+    // Return empty config if error
     return { teams: [], leagues: [] };
   }
 }
 
-function saveConfig(config: Config): void {
-  try {
-    const configPath = path.join(process.cwd(), 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  } catch (error) {
-    console.error('Error saving config:', error);
-    throw new Error(`Failed to save configuration`);
-  }
+// This function is now deprecated as we use direct MongoDB operations
+// Keeping interface compatibility for legacy code
+async function saveConfig(config: Config): Promise<void> {
+  console.warn('saveConfig is deprecated, use direct MongoDB operations instead');
 }
 
 // Auth routes
@@ -285,8 +293,8 @@ app.get('/login', (req, res) => {
 });
 
 // Direct config access when OAuth is disabled
-app.get('/config-direct', (req, res) => {
-  const config = getConfig();
+app.get('/config-direct', async (req, res) => {
+  const config = await getConfig();
   
   res.render('config-direct', {
     config: config
@@ -316,7 +324,7 @@ if (DISCORD_OAUTH_ENABLED) {
 
 // Protected routes
 app.get('/', isAuthenticated, async (req, res) => {
-  const config = getConfig();
+  const config = await getConfig();
   
   // If OAuth is disabled, redirect to direct config
   if (!DISCORD_OAUTH_ENABLED) {
@@ -337,24 +345,21 @@ app.get('/', isAuthenticated, async (req, res) => {
 });
 
 // API routes for config management
-app.get('/api/config', (req, res) => {
+app.get('/api/config', async (req, res) => {
   try {
-    const config = getConfig();
+    const config = await getConfig();
     res.json(config);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve configuration' });
   }
 });
 
+// Legacy config endpoint - now redirects to use the Teams and Leagues APIs directly
 app.post('/api/config', (req, res) => {
-  try {
-    const config = req.body as Config;
-    
-    saveConfig(config);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save configuration' });
-  }
+  return res.status(410).json({ 
+    error: 'This endpoint is deprecated. Use /api/teams and /api/leagues endpoints instead.',
+    message: 'The application now uses MongoDB directly and no longer uses config.json'
+  });
 });
 
 // Team-specific endpoints
@@ -586,81 +591,7 @@ app.get('/api/sportsdb/search/leagues', isAuthenticated, async (req, res) => {
   }
 });
 
-// Function to migrate old config file to MongoDB
-async function migrateConfigToMongoDB() {
-  try {
-    // Check if we've already migrated
-    const teamsCount = await Team.countDocuments();
-    const leaguesCount = await League.countDocuments();
-    
-    // Skip if we already have data in MongoDB
-    if (teamsCount > 0 || leaguesCount > 0) {
-      console.log('Migration skipped: Data already exists in MongoDB');
-      return;
-    }
-    
-    console.log('Starting migration from config file to MongoDB...');
-    
-    try {
-      const config = getConfig();
-      
-      // Skip empty configs
-      if (!config.teams.length && !config.leagues.length) {
-        console.log('No data to migrate');
-        return;
-      }
-      
-      console.log(`Migrating: ${config.teams.length} teams, ${config.leagues.length} leagues`);
-      
-      // Set default guild ID for old records
-      const defaultGuildId = process.env.DEFAULT_GUILD_ID || 'legacy';
-      
-      // Migrate teams
-      for (const team of config.teams) {
-        try {
-          await Team.create({
-            teamId: team.teamId,
-            teamName: `Team ${team.teamId}`,  // Placeholder name
-            guildId: defaultGuildId,
-            notifyRoleId: team.notifyRoleId,
-            channelId: team.channelId
-          });
-        } catch (error) {
-          console.error(`Failed to migrate team ${team.teamId}:`, error);
-        }
-      }
-      
-      // Migrate leagues
-      for (const league of config.leagues) {
-        try {
-          await League.create({
-            leagueId: league.leagueId,
-            leagueName: `League ${league.leagueId}`,  // Placeholder name
-            guildId: defaultGuildId,
-            notifyRoleId: league.notifyRoleId,
-            channelId: league.channelId,
-            excludedWords: league.excludedWords || []
-          });
-        } catch (error) {
-          console.error(`Failed to migrate league ${league.leagueId}:`, error);
-        }
-      }
-      
-      console.log('Migration completed');
-    } catch (error) {
-      console.error('Error during migration:', error);
-    }
-    
-    console.log('Migration from config file to MongoDB completed');
-  } catch (error) {
-    console.error('Migration error:', error);
-  }
-}
-
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-  
-  // Run migration after server starts
-  migrateConfigToMongoDB();
 });

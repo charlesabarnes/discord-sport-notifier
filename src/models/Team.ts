@@ -7,7 +7,6 @@ export interface TeamDocument extends mongoose.Document {
   guildId: string;
   notifyRoleId: string;
   channelId: string;
-  environment: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,15 +35,11 @@ const TeamSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  environment: {
-    type: String,
-    default: 'production'
-  }
 }, {
   timestamps: true
 });
 
 // Create a compound index to prevent duplicates
-TeamSchema.index({ teamId: 1, guildId: 1, environment: 1 }, { unique: true });
+TeamSchema.index({ teamId: 1, guildId: 1 }, { unique: true });
 
 export default mongoose.model<TeamDocument>('Team', TeamSchema);

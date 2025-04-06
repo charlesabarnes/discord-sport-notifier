@@ -8,7 +8,6 @@ export interface LeagueDocument extends mongoose.Document {
   notifyRoleId: string;
   channelId: string;
   excludedWords?: string[];
-  environment: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,15 +40,11 @@ const LeagueSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
-  environment: {
-    type: String,
-    default: 'production'
-  }
 }, {
   timestamps: true
 });
 
 // Create a compound index to prevent duplicates
-LeagueSchema.index({ leagueId: 1, guildId: 1, environment: 1 }, { unique: true });
+LeagueSchema.index({ leagueId: 1, guildId: 1 }, { unique: true });
 
 export default mongoose.model<LeagueDocument>('League', LeagueSchema);

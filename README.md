@@ -41,7 +41,6 @@ This project is a Discord bot that notifies specific roles when a sports game is
     
     # UI Configuration
     UI_PORT=3000 # Optional, defaults to 3000
-    NODE_ENV=production # Optional, defaults to production
     
     # Discord OAuth Integration (OPTIONAL - for enhanced UI with Discord integration)
     DISCORD_CLIENT_ID=your-discord-application-client-id
@@ -110,7 +109,7 @@ The UI operates in two modes:
 
 The UI allows you to:
 
-- Configure teams and leagues by environment (production, staging, development)
+- Configure teams and leagues for notifications
 - Add and remove teams to track for notifications
 - Add and remove leagues to track for notifications
 - Configure channel IDs and role IDs for notifications
@@ -132,13 +131,6 @@ If you want to run only the Discord bot:
 npm run start
 ```
 
-### Environment-Specific Configuration
-
-The bot supports different configurations for different environments. You can:
-
-1. Switch environments in the UI using the environment selector
-2. Run the bot with a specific environment: `NODE_ENV=staging npm run start`
-3. Each environment gets its own config file (e.g., `config.staging.json`, `config.development.json`)
 
 ## Docker Support
 
@@ -154,7 +146,6 @@ docker run -d \
   -e SPORTSDB_API_KEY=your_key \
   -e MONGODB_URI=your_mongodb_uri \
   -p 3000:3000 \
-  -v /path/to/config.json:/app/config.json \
   ghcr.io/charlesabarnes/discord-sport-notifier:latest
 ```
 
@@ -177,10 +168,6 @@ ghcr.io/charlesabarnes/discord-sport-notifier:latest
    - SPORTSDB_API_KEY
    - MONGODB_URI
 
-3. Add volume mappings:
-   - Host Path: `/path/to/your/config.json`
-   - Container Path: `/app/config.json`
+3. Map port 3000 to access the web UI
 
-4. Map port 3000 to access the web UI
-
-5. Set container to auto-start and restart policy to "unless-stopped"
+4. Set container to auto-start and restart policy to "unless-stopped"
