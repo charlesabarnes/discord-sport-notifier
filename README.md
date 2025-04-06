@@ -164,14 +164,13 @@ Pre-built Docker images are available on GitHub Container Registry:
 
 ```
 ghcr.io/charlesabarnes/discord-sport-notifier:latest
-ghcr.io/charlesabarnes/discord-sport-notifier:f-live-scores
 ```
 
 ## Setting up in Unraid
 
 1. Add the Docker image from GitHub Packages:
    - Repository: `ghcr.io/charlesabarnes/discord-sport-notifier`
-   - Tag: `latest` or `f-live-scores` for the live scores feature
+   - Tag: `latest`
 
 2. Set the required environment variables in the Unraid Docker template:
    - DISCORD_TOKEN
