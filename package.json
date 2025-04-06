@@ -4,12 +4,12 @@
   "description": "A discord chatbot that notifies roles when a game is coming up for your favorite sports teams",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node dist/index.js",
     "start:ui": "node dist/src/server.js",
     "start:all": "concurrently \"npm run start\" \"npm run start:ui\"",
-    "dev": "tsc && node index.js",
+    "dev": "tsc && node dist/index.js",
     "dev:ui": "ts-node src/server.ts",
-    "dev:all": "tsc && concurrently \"node index.js\" \"ts-node src/server.ts\"",
+    "dev:all": "tsc && concurrently \"node dist/index.js\" \"ts-node src/server.ts\"",
     "build": "tsc"
   },
   "repository": {

@@ -49,9 +49,8 @@ client.once('ready', async () => {
   await connectToDatabase();
   
   // Get the configuration from MongoDB
-  const env = process.env.NODE_ENV || 'production';
-  config = await getConfigFromMongoDB(env);
-  console.log(`Loaded config from MongoDB for ${env} environment: ${config.teams.length} teams, ${config.leagues.length} leagues`);
+  config = await getConfigFromMongoDB();
+  console.log(`Loaded config from MongoDB: ${config.teams.length} teams, ${config.leagues.length} leagues`);
   
   // Start the scheduling
   scheduleDailyCheck();

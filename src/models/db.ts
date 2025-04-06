@@ -38,12 +38,12 @@ export async function connectToDatabase(): Promise<void> {
   }
 }
 
-// Get config from MongoDB based on environment
+// Get config from MongoDB (environment parameter is ignored now)
 export async function getConfigFromMongoDB(env: string = 'production'): Promise<Config> {
   try {
-    // Get teams and leagues from MongoDB
-    const teams = await Team.find({ environment: env }).lean();
-    const leagues = await League.find({ environment: env }).lean();
+    // Get teams and leagues from MongoDB - no longer filtering by environment
+    const teams = await Team.find({}).lean();
+    const leagues = await League.find({}).lean();
     
     // Convert to config format
     const config: Config = {
