@@ -8,6 +8,10 @@ services:
       - SPORTSDB_API_KEY=${SPORTSDB_API_KEY}
       - MONGODB_URI=${MONGODB_URI}
       - UI_PORT=${UI_PORT:-3000}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_CALLBACK_URL=${DISCORD_CALLBACK_URL}
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
     ports:
       - "${UI_PORT:-3000}:3000"
     restart: unless-stopped

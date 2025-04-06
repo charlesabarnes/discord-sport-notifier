@@ -167,6 +167,12 @@ ghcr.io/charlesabarnes/discord-sport-notifier:latest
    - DISCORD_TOKEN
    - SPORTSDB_API_KEY
    - MONGODB_URI
+   - BASE_URL (your external URL, e.g., "http://unraid.local:3000" or "https://sports.example.com")
+   
+   For Discord OAuth (optional):
+   - DISCORD_CLIENT_ID
+   - DISCORD_CLIENT_SECRET
+   - DISCORD_CALLBACK_URL (should be BASE_URL + "/auth/discord/callback")
 
 3. Map port 3000 to access the web UI
 

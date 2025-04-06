@@ -22,7 +22,9 @@ const app = express();
 const PORT = process.env.UI_PORT || 3000;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `http://localhost:${PORT}/auth/discord/callback`;
+// Get base URL or use localhost as fallback
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `${BASE_URL}/auth/discord/callback`;
 
 // Check if Discord OAuth credentials are set
 const DISCORD_OAUTH_ENABLED = !!(CLIENT_ID && CLIENT_SECRET);
