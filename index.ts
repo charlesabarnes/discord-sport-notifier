@@ -102,7 +102,15 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
           }
         }
 
-        const gameDate = new Date(event.dateEvent + ' ' + event.strTime);
+        // Convert date and time to UTC, respecting timezone 
+        // Format: 2023-05-25 19:30:00
+        const eventDate = event.dateEvent; // YYYY-MM-DD
+        const eventTime = event.strTime || '00:00:00'; // HH:MM:SS
+        
+        // Explicitly add 'Z' to indicate UTC time (Zulu time)
+        const gameDate = new Date(`${eventDate}T${eventTime}Z`);
+        
+        console.log(`Event: ${event.strEvent}, Date string: ${eventDate} ${eventTime}, Parsed date: ${gameDate}`);
         const game = {
           eventId: event.idEvent,
           eventName: event.strEvent,
@@ -131,7 +139,15 @@ async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueCh
 
     if (events && events.length > 0) {
       for (const event of events) {
-        const gameDate = new Date(event.dateEvent + ' ' + event.strTime);
+        // Convert date and time to UTC, respecting timezone 
+        // Format: 2023-05-25 19:30:00
+        const eventDate = event.dateEvent; // YYYY-MM-DD
+        const eventTime = event.strTime || '00:00:00'; // HH:MM:SS
+        
+        // Explicitly add 'Z' to indicate UTC time (Zulu time)
+        const gameDate = new Date(`${eventDate}T${eventTime}Z`);
+        
+        console.log(`Event: ${event.strEvent}, Date string: ${eventDate} ${eventTime}, Parsed date: ${gameDate}`);
         const game = {
           eventId: event.idEvent,
           eventName: event.strEvent,
