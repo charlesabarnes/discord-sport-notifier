@@ -53,40 +53,65 @@ client.once('ready', async () => {
   console.log(`Loaded config from MongoDB: ${config.teams.length} teams, ${config.leagues.length} leagues`);
   
   // Start the scheduling
+  console.log('Initializing event scheduling...');
   scheduleDailyCheck();
-  checkUpcomingGames();
+  checkUpcomingGames().catch(err => console.error('Initial checkUpcomingGames failed:', err));
+  console.log('Starting notification check interval (every 60 seconds)');
   setInterval(checkDatabaseForNotifications, 60*1000); // Check every 1 minute
 });
 
 function scheduleDailyCheck() {
   const now = new Date();
   const nextCheck = new Date();
-  nextCheck.setHours(24, 0, 0, 0); // Next midnight
+  nextCheck.setDate(nextCheck.getDate() + 1);
+  nextCheck.setHours(0, 0, 0, 0); // Next midnight
 
   const timeUntilNextCheck = nextCheck.getTime() - now.getTime();
+  console.log(`Scheduling next daily check for ${nextCheck.toISOString()}, in ${Math.round(timeUntilNextCheck / 1000 / 60)} minutes`);
+  
   setTimeout(() => {
+    console.log('Running scheduled daily check at', new Date().toISOString());
     checkUpcomingGames();
-    setInterval(checkUpcomingGames, 86400000); // Every 24 hours after that
+    setInterval(() => {
+      console.log('Running scheduled daily check at', new Date().toISOString());
+      checkUpcomingGames();
+    }, 86400000); // Every 24 hours after that
   }, timeUntilNextCheck);
 }
 
 async function checkUpcomingGames() {
+  try {
+    console.log(`Starting checkUpcomingGames at ${new Date().toISOString()}`);
+    
+    // Refresh config from database
+    config = await getConfigFromMongoDB();
+    console.log(`Refreshed config: ${config?.teams?.length || 0} teams and ${config?.leagues?.length || 0} leagues`);
 
-  const teamPromises = (config?.teams || []).map(async (team) => {
-    await fetchUpcomingGames(team.teamId, team.notifyRoleId, team.channelId);
-  });
+    const teamPromises = (config?.teams || []).map(async (team) => {
+      await fetchUpcomingGames(team.teamId, team.notifyRoleId, team.channelId);
+    });
 
-  const leaguePromises = (config?.leagues || []).map(async (league) => {
-    await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId, league.excludedWords);
-  });
+    const leaguePromises = (config?.leagues || []).map(async (league) => {
+      await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId, league.excludedWords);
+    });
 
-  await Promise.all([...teamPromises, ...leaguePromises]);
+    await Promise.all([...teamPromises, ...leaguePromises]);
+    console.log('Completed checkUpcomingGames successfully');
+  } catch (error) {
+    console.error('Error in checkUpcomingGames:', error);
+  }
 }
 
 async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string, excludedWords?: string[]) {
   try {
+    console.log(`Fetching events for league ${leagueId}`);
     const url = `https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
     const responseJson = await response.json();
     const events = responseJson.events;
 
@@ -124,16 +149,25 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
           { upsert: true }
         );
       }
+      console.log(`Fetched and stored ${events.length} events for league ${leagueId}`);
+    } else {
+      console.log(`No upcoming events found for league ${leagueId}`);
     }
   } catch (error) {
-    console.error('Error fetching upcoming league events:', error);
+    console.error(`Error fetching upcoming league events for league ${leagueId}:`, error);
   }
 }
 
 async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueChannelId: string) {
   try {
+    console.log(`Fetching games for team ${teamId}`);
     const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnext.php?id=${teamId}`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
     const responseJson = await response.json();
     const events = responseJson.events;
 
@@ -162,9 +196,12 @@ async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueCh
           { upsert: true }
         );
       }
+      console.log(`Fetched and stored ${events.length} games for team ${teamId}`);
+    } else {
+      console.log(`No upcoming games found for team ${teamId}`);
     }
   } catch (error) {
-    console.error('Error fetching upcoming games:', error);
+    console.error(`Error fetching upcoming games for team ${teamId}:`, error);
   }
 }
 
