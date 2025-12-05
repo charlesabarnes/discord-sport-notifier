@@ -3,15 +3,15 @@ import * as dotenv from 'dotenv';
 import { MongoClient, Db, Collection } from 'mongodb';
 import mongoose from 'mongoose';
 import { connectToDatabase, getConfigFromMongoDB, Config, ConfigTeam, ConfigLeague } from './src/models/db';
+import { getUpcomingEvents, getUpcomingTeamEvents, ESPNEvent } from './src/libs/espn';
 
 dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const SPORTSDB_API_KEY = process.env.SPORTSDB_API_KEY;
 const MONGODB_URI = process.env.MONGODB_URI; // Your MongoDB connection string
 const DB_NAME = process.env.DB_NAME || 'sportsdb';
-const COLLECTION_NAME = process.env.COLLECTION_NAME || 'games';
+const COLLECTION_NAME = process.env.ESPN_COLLECTION_NAME || 'espngames'; // New collection for ESPN data
 
 type Game = {
   eventId: string;
@@ -88,11 +88,11 @@ async function checkUpcomingGames() {
     console.log(`Refreshed config: ${config?.teams?.length || 0} teams and ${config?.leagues?.length || 0} leagues`);
 
     const teamPromises = (config?.teams || []).map(async (team) => {
-      await fetchUpcomingGames(team.teamId, team.notifyRoleId, team.channelId);
+      await fetchUpcomingGames(team.teamId, team.sport, team.leagueSlug, team.notifyRoleId, team.channelId);
     });
 
     const leaguePromises = (config?.leagues || []).map(async (league) => {
-      await fetchUpcomingLeagueEvents(league.leagueId, league.notifyRoleId, league.channelId, league.excludedWords);
+      await fetchUpcomingLeagueEvents(league.leagueId, league.sport, league.notifyRoleId, league.channelId, league.excludedWords);
     });
 
     await Promise.all([...teamPromises, ...leaguePromises]);
@@ -102,49 +102,37 @@ async function checkUpcomingGames() {
   }
 }
 
-async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string, leagueChannelId: string, excludedWords?: string[]) {
+async function fetchUpcomingLeagueEvents(leagueId: string, sport: string, notifyRoleId: string, leagueChannelId: string, excludedWords?: string[]) {
   try {
-    console.log(`Fetching events for league ${leagueId}`);
-    const url = `https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnextleague.php?id=${leagueId}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const responseJson = await response.json();
-    const events = responseJson.events;
+    console.log(`Fetching events for league ${leagueId} (${sport})`);
+
+    const events = await getUpcomingEvents(sport, leagueId);
 
     if (events && events.length > 0) {
       for (const event of events) {
         if (excludedWords && excludedWords.length > 0) {
-          const excluded = excludedWords.some(word => 
-            event.strEvent.toLowerCase().includes(word.toLowerCase())
+          const excluded = excludedWords.some(word =>
+            event.name.toLowerCase().includes(word.toLowerCase())
           );
           if (excluded) {
-            console.log(`Excluded event: ${event.strEvent}`);
+            console.log(`Excluded event: ${event.name}`);
             continue;
           }
         }
 
-        // Convert date and time to UTC, respecting timezone 
-        // Format: 2023-05-25 19:30:00
-        const eventDate = event.dateEvent; // YYYY-MM-DD
-        const eventTime = event.strTime || '00:00:00'; // HH:MM:SS
-        
-        // Explicitly add 'Z' to indicate UTC time (Zulu time)
-        const gameDate = new Date(`${eventDate}T${eventTime}Z`);
-        
-        console.log(`Event: ${event.strEvent}, Date string: ${eventDate} ${eventTime}, Parsed date: ${gameDate}`);
+        // ESPN uses ISO 8601 date format
+        const gameDate = new Date(event.date);
+
+        console.log(`Event: ${event.name}, Date: ${event.date}, Parsed date: ${gameDate}`);
         const game = {
-          eventId: event.idEvent,
-          eventName: event.strEvent,
+          eventId: event.id,
+          eventName: event.name,
           eventDate: gameDate,
           notifyRoleId,
           channelId: leagueChannelId,
         };
         await gamesCollection.updateOne(
-          { eventId: event.idEvent },
+          { eventId: event.id },
           { $set: game },
           { upsert: true }
         );
@@ -158,40 +146,28 @@ async function fetchUpcomingLeagueEvents(leagueId: string, notifyRoleId: string,
   }
 }
 
-async function fetchUpcomingGames(teamId: string, notifyRoleId: string, leagueChannelId: string) {
+async function fetchUpcomingGames(teamId: string, sport: string, leagueSlug: string, notifyRoleId: string, leagueChannelId: string) {
   try {
-    console.log(`Fetching games for team ${teamId}`);
-    const url=`https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/eventsnext.php?id=${teamId}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const responseJson = await response.json();
-    const events = responseJson.events;
+    console.log(`Fetching games for team ${teamId} (${sport}/${leagueSlug})`);
+
+    const events = await getUpcomingTeamEvents(sport, leagueSlug, teamId);
 
     if (events && events.length > 0) {
       for (const event of events) {
-        // Convert date and time to UTC, respecting timezone 
-        // Format: 2023-05-25 19:30:00
-        const eventDate = event.dateEvent; // YYYY-MM-DD
-        const eventTime = event.strTime || '00:00:00'; // HH:MM:SS
-        
-        // Explicitly add 'Z' to indicate UTC time (Zulu time)
-        const gameDate = new Date(`${eventDate}T${eventTime}Z`);
-        
-        console.log(`Event: ${event.strEvent}, Date string: ${eventDate} ${eventTime}, Parsed date: ${gameDate}`);
+        // ESPN uses ISO 8601 date format
+        const gameDate = new Date(event.date);
+
+        console.log(`Event: ${event.name}, Date: ${event.date}, Parsed date: ${gameDate}`);
         const game = {
-          eventId: event.idEvent,
-          eventName: event.strEvent,
+          eventId: event.id,
+          eventName: event.name,
           eventDate: gameDate,
           teamId,
           notifyRoleId,
           channelId: leagueChannelId,
         };
         await gamesCollection.updateOne(
-          { eventId: event.idEvent },
+          { eventId: event.id },
           { $set: game },
           { upsert: true }
         );

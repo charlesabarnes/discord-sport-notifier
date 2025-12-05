@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 
-// Original TheSportsDB League model - kept for migration reference
-export interface LeagueDocument extends mongoose.Document {
-  leagueId: string;
+export interface ESPNLeagueDocument extends mongoose.Document {
+  leagueId: string;  // ESPN league slug (e.g., "nfl", "nba", "eng.1")
   leagueName: string;
   leagueLogo?: string;
+  sport: string;     // e.g., "football", "basketball", "soccer"
   guildId: string;
   notifyRoleId: string;
   channelId: string;
@@ -13,7 +13,7 @@ export interface LeagueDocument extends mongoose.Document {
   updatedAt: Date;
 }
 
-const LeagueSchema = new mongoose.Schema({
+const ESPNLeagueSchema = new mongoose.Schema({
   leagueId: {
     type: String,
     required: true,
@@ -24,6 +24,10 @@ const LeagueSchema = new mongoose.Schema({
   },
   leagueLogo: {
     type: String
+  },
+  sport: {
+    type: String,
+    required: true
   },
   guildId: {
     type: String,
@@ -46,6 +50,7 @@ const LeagueSchema = new mongoose.Schema({
 });
 
 // Create a compound index to prevent duplicates
-LeagueSchema.index({ leagueId: 1, guildId: 1 }, { unique: true });
+ESPNLeagueSchema.index({ leagueId: 1, sport: 1, guildId: 1 }, { unique: true });
 
-export default mongoose.model<LeagueDocument>('League', LeagueSchema);
+// Use 'espnleagues' collection name
+export default mongoose.model<ESPNLeagueDocument>('ESPNLeague', ESPNLeagueSchema, 'espnleagues');

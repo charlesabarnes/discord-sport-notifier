@@ -11,6 +11,18 @@
   leagueSearchQuery: '',
   teams: [],
   leagues: [],
+
+  // ESPN API data - Teams tab
+  espnSports: [],
+  espnLeagues: [],
+  espnTeams: [],
+  selectedSport: '',
+  selectedLeagueSlug: '',
+  loadingTeams: false,
+
+  // ESPN API data - Leagues tab (separate state)
+  espnLeaguesForLeagueTab: [],
+  selectedLeagueSport: '',
   
   // Function to determine contrast color (black or white) based on background color
   getContrastColor(hexColor) {
@@ -36,22 +48,82 @@
     return luminance > 0.5 ? '#000000' : '#ffffff';
   },
   
+  async init() {
+    // Load ESPN sports on page load
+    await this.loadEspnSports();
+  },
+
+  async loadEspnSports() {
+    try {
+      const response = await fetch('/api/espn/sports');
+      this.espnSports = await response.json();
+    } catch (error) {
+      console.error('Error loading ESPN sports:', error);
+    }
+  },
+
+  async onSportChange() {
+    this.selectedLeagueSlug = '';
+    this.espnLeagues = [];
+    this.espnTeams = [];
+    this.selectedTeam = null;
+
+    if (this.selectedSport) {
+      try {
+        const response = await fetch(`/api/espn/leagues/${this.selectedSport}`);
+        this.espnLeagues = await response.json();
+      } catch (error) {
+        console.error('Error loading ESPN leagues:', error);
+      }
+    }
+  },
+
+  async onLeagueChange() {
+    this.espnTeams = [];
+    this.selectedTeam = null;
+    this.loadingTeams = true;
+
+    if (this.selectedSport && this.selectedLeagueSlug) {
+      try {
+        const response = await fetch(`/api/espn/teams/${this.selectedSport}/${this.selectedLeagueSlug}`);
+        this.espnTeams = await response.json();
+      } catch (error) {
+        console.error('Error loading ESPN teams:', error);
+      }
+    }
+    this.loadingTeams = false;
+  },
+
+  async onLeagueSportChange() {
+    this.espnLeaguesForLeagueTab = [];
+    this.selectedLeague = null;
+
+    if (this.selectedLeagueSport) {
+      try {
+        const response = await fetch(`/api/espn/leagues/${this.selectedLeagueSport}`);
+        this.espnLeaguesForLeagueTab = await response.json();
+      } catch (error) {
+        console.error('Error loading ESPN leagues:', error);
+      }
+    }
+  },
+
   async selectGuild(guildId) {
     this.selectedGuildId = guildId;
     try {
       // Get guild channels and roles
       const response = await fetch(`/api/discord/guilds/${guildId}`);
       this.guildData = await response.json();
-      
+
       // Check if there's an error message
       if (this.guildData.error) {
         alert(`Error: ${this.guildData.error}`);
       }
-      
+
       // Load teams and leagues for this guild
       await this.loadTeams();
       await this.loadLeagues();
-      
+
     } catch (error) {
       console.error('Error fetching guild data:', error);
       alert('Failed to fetch guild data. Please check console for details.');
@@ -76,36 +148,16 @@
     }
   },
   
-  async searchTeams() {
-    if (!this.teamSearchQuery || this.teamSearchQuery.length < 3) return;
-    
-    try {
-      const response = await fetch(`/api/sportsdb/search/teams?q=${encodeURIComponent(this.teamSearchQuery)}`);
-      this.teamSearchResults = await response.json();
-    } catch (error) {
-      console.error('Error searching teams:', error);
-    }
-  },
-  
   selectTeam(team) {
     this.selectedTeam = team;
-    this.teamSearchResults = [];
   },
-  
-  async searchLeagues() {
-    if (!this.leagueSearchQuery || this.leagueSearchQuery.length < 3) return;
-    
-    try {
-      const response = await fetch(`/api/sportsdb/search/leagues?q=${encodeURIComponent(this.leagueSearchQuery)}`);
-      this.leagueSearchResults = await response.json();
-    } catch (error) {
-      console.error('Error searching leagues:', error);
-    }
-  },
-  
-  selectLeague(league) {
-    this.selectedLeague = league;
-    this.leagueSearchResults = [];
+
+  selectLeagueFromList(league) {
+    this.selectedLeague = {
+      id: league.id,
+      name: league.name,
+      slug: league.slug
+    };
   },
   
   async addTeam() {
@@ -113,15 +165,20 @@
       alert('Please select a team and a server');
       return;
     }
-    
+
+    if (!this.selectedSport || !this.selectedLeagueSlug) {
+      alert('Please select a sport and league first');
+      return;
+    }
+
     const channelId = document.getElementById('teamChannelId').value;
     const notifyRoleId = document.getElementById('teamNotifyRoleId').value;
-    
+
     if (!channelId || !notifyRoleId) {
       alert('Please select both a channel and a role');
       return;
     }
-    
+
     try {
       const response = await fetch('/api/teams', {
         method: 'POST',
@@ -129,24 +186,25 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          teamId: this.selectedTeam.idTeam,
-          teamName: this.selectedTeam.strTeam,
-          teamLogo: this.selectedTeam.strTeamBadge || this.selectedTeam.strTeamLogo,
+          teamId: this.selectedTeam.id,
+          teamName: this.selectedTeam.name,
+          teamLogo: this.selectedTeam.logo,
+          sport: this.selectedSport,
+          leagueSlug: this.selectedLeagueSlug,
           guildId: this.selectedGuildId,
           channelId: channelId,
           notifyRoleId: notifyRoleId
         })
       });
-      
+
       const result = await response.json();
-      
+
       if (response.ok) {
         // Reset form
         this.selectedTeam = null;
-        this.teamSearchQuery = '';
         document.getElementById('teamChannelId').value = '';
         document.getElementById('teamNotifyRoleId').value = '';
-        
+
         // Reload teams
         await this.loadTeams();
       } else {
@@ -163,16 +221,21 @@
       alert('Please select a league and a server');
       return;
     }
-    
+
+    if (!this.selectedLeagueSport) {
+      alert('Please select a sport first');
+      return;
+    }
+
     const channelId = document.getElementById('leagueChannelId').value;
     const notifyRoleId = document.getElementById('leagueNotifyRoleId').value;
     const excludedWords = document.getElementById('leagueExcludedWords').value;
-    
+
     if (!channelId || !notifyRoleId) {
       alert('Please select both a channel and a role');
       return;
     }
-    
+
     try {
       const response = await fetch('/api/leagues', {
         method: 'POST',
@@ -180,26 +243,26 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          leagueId: this.selectedLeague.idLeague,
-          leagueName: this.selectedLeague.strLeague,
-          leagueLogo: this.selectedLeague.strBadge || this.selectedLeague.strLogo,
+          leagueId: this.selectedLeague.slug,
+          leagueName: this.selectedLeague.name,
+          leagueLogo: '',
+          sport: this.selectedLeagueSport,
           guildId: this.selectedGuildId,
           channelId: channelId,
           notifyRoleId: notifyRoleId,
           excludedWords: excludedWords
         })
       });
-      
+
       const result = await response.json();
-      
+
       if (response.ok) {
         // Reset form
         this.selectedLeague = null;
-        this.leagueSearchQuery = '';
         document.getElementById('leagueChannelId').value = '';
         document.getElementById('leagueNotifyRoleId').value = '';
         document.getElementById('leagueExcludedWords').value = '';
-        
+
         // Reload leagues
         await this.loadLeagues();
       } else {
@@ -210,7 +273,7 @@
       alert('Failed to add league. Please check console for details.');
     }
   }
-}">
+}" x-init="init()">
   <!-- Server Selection -->
   <div class="mb-6">
     <h2 class="text-xl font-semibold mb-3">Select Discord Server</h2>
@@ -347,46 +410,75 @@
         <!-- No environment needed -->
         <input type="hidden" id="teamGuildId" :value="selectedGuildId">
         
-        <!-- Team Search -->
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Search for team</label>
-          <div class="relative">
-            <input 
-              type="text" 
-              x-model="teamSearchQuery" 
-              @input="searchTeams()" 
-              @keydown.enter.prevent
-              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
-              placeholder="Enter team name (min 3 characters)"
+        <!-- Sport Selection -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Sport</label>
+            <select
+              x-model="selectedSport"
+              @change="onSportChange()"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
             >
-            <div 
-              x-show="teamSearchResults.length > 0"
-              class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
-            >
-              <template x-for="team in teamSearchResults" :key="team.idTeam">
-                <div 
-                  class="p-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                  @click="selectTeam(team)"
-                >
-                  <img :src="team.strTeamBadge || team.strTeamLogo" class="w-8 h-8 mr-2" onerror="this.style.display='none'">
-                  <div>
-                    <div x-text="team.strTeam" class="font-medium"></div>
-                    <div x-text="team.strLeague" class="text-xs text-gray-500"></div>
-                  </div>
-                </div>
+              <option value="">Select Sport</option>
+              <template x-for="sport in espnSports" :key="sport.id">
+                <option :value="sport.id" x-text="sport.name"></option>
               </template>
-            </div>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">League</label>
+            <select
+              x-model="selectedLeagueSlug"
+              @change="onLeagueChange()"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+              :disabled="!selectedSport"
+            >
+              <option value="">Select League</option>
+              <template x-for="league in espnLeagues" :key="league.id">
+                <option :value="league.slug" x-text="league.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <!-- Team Selection -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Select Team</label>
+          <div x-show="loadingTeams" class="text-gray-500 text-sm py-2">Loading teams...</div>
+          <div x-show="!loadingTeams && espnTeams.length === 0 && selectedLeagueSlug" class="text-gray-500 text-sm py-2">
+            No teams available for this league
+          </div>
+          <div
+            x-show="!loadingTeams && espnTeams.length > 0"
+            class="max-h-60 overflow-y-auto border border-gray-300 rounded-md"
+          >
+            <template x-for="team in espnTeams" :key="team.id">
+              <div
+                class="p-2 hover:bg-gray-100 cursor-pointer flex items-center border-b last:border-b-0"
+                :class="selectedTeam?.id === team.id ? 'bg-blue-50 border-blue-300' : ''"
+                @click="selectTeam(team)"
+              >
+                <img :src="team.logo" class="w-8 h-8 mr-2" onerror="this.style.display='none'">
+                <div>
+                  <div x-text="team.name" class="font-medium"></div>
+                  <div x-text="team.shortName" class="text-xs text-gray-500"></div>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
         <!-- Selected Team Display -->
         <div class="mb-4" x-show="selectedTeam">
-          <div class="p-3 border border-gray-300 rounded-md bg-white">
+          <div class="p-3 border border-green-300 rounded-md bg-green-50">
             <div class="flex items-center">
-              <img :src="selectedTeam?.strTeamBadge || selectedTeam?.strTeamLogo" class="w-12 h-12 mr-3" onerror="this.style.display='none'">
+              <img :src="selectedTeam?.logo" class="w-12 h-12 mr-3" onerror="this.style.display='none'">
               <div>
-                <div x-text="selectedTeam?.strTeam" class="font-medium"></div>
-                <div x-text="selectedTeam?.strLeague" class="text-sm text-gray-600"></div>
+                <div x-text="selectedTeam?.name" class="font-medium"></div>
+                <div class="text-sm text-gray-600">
+                  <span x-text="selectedSport"></span> / <span x-text="selectedLeagueSlug"></span>
+                </div>
               </div>
               <button type="button" @click="selectedTeam = null" class="ml-auto text-gray-400 hover:text-gray-600">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -523,46 +615,55 @@
         <!-- No environment needed -->
         <input type="hidden" id="leagueGuildId" :value="selectedGuildId">
         
-        <!-- League Search -->
+        <!-- Sport Selection for Leagues -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Search for league</label>
-          <div class="relative">
-            <input 
-              type="text" 
-              x-model="leagueSearchQuery" 
-              @input="searchLeagues()" 
-              @keydown.enter.prevent
-              class="w-full px-3 py-2 border border-gray-300 rounded-md" 
-              placeholder="Enter league name (min 3 characters)"
-            >
-            <div 
-              x-show="leagueSearchResults.length > 0"
-              class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
-            >
-              <template x-for="league in leagueSearchResults" :key="league.idLeague">
-                <div 
-                  class="p-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                  @click="selectLeague(league)"
-                >
-                  <img :src="league.strBadge || league.strLogo" class="w-8 h-8 mr-2" onerror="this.style.display='none'">
-                  <div>
-                    <div x-text="league.strLeague" class="font-medium"></div>
-                    <div x-text="league.strCountry" class="text-xs text-gray-500"></div>
-                  </div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sport</label>
+          <select
+            x-model="selectedLeagueSport"
+            @change="onLeagueSportChange()"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Select Sport</option>
+            <template x-for="sport in espnSports" :key="sport.id">
+              <option :value="sport.id" x-text="sport.name"></option>
+            </template>
+          </select>
+        </div>
+
+        <!-- League Selection -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Select League</label>
+          <div x-show="espnLeaguesForLeagueTab.length === 0 && selectedLeagueSport" class="text-gray-500 text-sm py-2">
+            No leagues available for this sport
+          </div>
+          <div
+            x-show="espnLeaguesForLeagueTab.length > 0"
+            class="max-h-60 overflow-y-auto border border-gray-300 rounded-md"
+          >
+            <template x-for="league in espnLeaguesForLeagueTab" :key="league.id">
+              <div
+                class="p-2 hover:bg-gray-100 cursor-pointer flex items-center border-b last:border-b-0"
+                :class="selectedLeague?.slug === league.slug ? 'bg-blue-50 border-blue-300' : ''"
+                @click="selectLeagueFromList(league)"
+              >
+                <div>
+                  <div x-text="league.name" class="font-medium"></div>
+                  <div x-text="league.slug" class="text-xs text-gray-500"></div>
                 </div>
-              </template>
-            </div>
+              </div>
+            </template>
           </div>
         </div>
 
         <!-- Selected League Display -->
         <div class="mb-4" x-show="selectedLeague">
-          <div class="p-3 border border-gray-300 rounded-md bg-white">
+          <div class="p-3 border border-green-300 rounded-md bg-green-50">
             <div class="flex items-center">
-              <img :src="selectedLeague?.strBadge || selectedLeague?.strLogo" class="w-12 h-12 mr-3" onerror="this.style.display='none'">
               <div>
-                <div x-text="selectedLeague?.strLeague" class="font-medium"></div>
-                <div x-text="selectedLeague?.strCountry" class="text-sm text-gray-600"></div>
+                <div x-text="selectedLeague?.name" class="font-medium"></div>
+                <div class="text-sm text-gray-600">
+                  <span x-text="selectedLeagueSport"></span> / <span x-text="selectedLeague?.slug"></span>
+                </div>
               </div>
               <button type="button" @click="selectedLeague = null" class="ml-auto text-gray-400 hover:text-gray-600">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

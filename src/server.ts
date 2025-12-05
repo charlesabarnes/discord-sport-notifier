@@ -12,9 +12,16 @@ import MongoStore from 'connect-mongo';
 import { Client, GatewayIntentBits } from 'discord.js';
 import mongoose from 'mongoose';
 
-// Import models
+// Import models (old TheSportsDB models - kept for migration reference)
 import Team from './models/Team';
 import League from './models/League';
+
+// Import new ESPN models (separate collections)
+import ESPNTeam from './models/ESPNTeam';
+import ESPNLeague from './models/ESPNLeague';
+
+// Import ESPN API helper
+import { getSports, getLeagues, getTeams, searchTeams, ESPN_SPORTS } from './libs/espn';
 
 dotenv.config();
 
@@ -233,12 +240,15 @@ async function getGuildData(guildId: string) {
 // Interface for config structure
 interface ConfigTeam {
   teamId: string;
+  sport: string;
+  leagueSlug: string;
   notifyRoleId: string;
   channelId: string;
 }
 
 interface ConfigLeague {
   leagueId: string;
+  sport: string;
   notifyRoleId: string;
   channelId: string;
   excludedWords?: string[];
@@ -249,27 +259,31 @@ interface Config {
   leagues: ConfigLeague[];
 }
 
-// Configuration helper functions - now using MongoDB
+// Configuration helper functions - using new ESPN collections
 async function getConfig(): Promise<Config> {
   try {
-    const teams = await Team.find({});
-    const leagues = await League.find({});
-    
+    // Use new ESPN collections
+    const teams = await ESPNTeam.find({});
+    const leagues = await ESPNLeague.find({});
+
     return {
       teams: teams.map(team => ({
         teamId: team.teamId,
+        sport: team.sport,
+        leagueSlug: team.leagueSlug,
         notifyRoleId: team.notifyRoleId,
         channelId: team.channelId
       })),
       leagues: leagues.map(league => ({
         leagueId: league.leagueId,
+        sport: league.sport,
         notifyRoleId: league.notifyRoleId,
         channelId: league.channelId,
         excludedWords: league.excludedWords
       }))
     };
   } catch (error) {
-    console.error('Error reading config from MongoDB:', error);
+    console.error('Error reading ESPN config from MongoDB:', error);
     // Return empty config if error
     return { teams: [], leagues: [] };
   }
@@ -364,21 +378,23 @@ app.post('/api/config', (req, res) => {
   });
 });
 
-// Team-specific endpoints
+// Team-specific endpoints (using new ESPN collections)
 app.post('/api/teams', async (req, res) => {
   try {
-    const { teamId, teamName, teamLogo, notifyRoleId, channelId, guildId } = req.body;
-    
-    // Create new team in MongoDB
-    const newTeam = new Team({
+    const { teamId, teamName, teamLogo, sport, leagueSlug, notifyRoleId, channelId, guildId } = req.body;
+
+    // Create new team in ESPN collection
+    const newTeam = new ESPNTeam({
       teamId,
       teamName,
       teamLogo,
+      sport,
+      leagueSlug,
       guildId,
       notifyRoleId,
       channelId
     });
-    
+
     await newTeam.save();
     
     // Return success response
@@ -402,14 +418,15 @@ app.post('/api/teams', async (req, res) => {
 app.get('/api/teams', async (req, res) => {
   try {
     const guildId = req.query.guildId as string;
-    
+
     // Query parameters for filtering
     const query: any = {};
     if (guildId) {
       query.guildId = guildId;
     }
-    
-    const teams = await Team.find(query).sort({ updatedAt: -1 });
+
+    // Use ESPN collection
+    const teams = await ESPNTeam.find(query).sort({ updatedAt: -1 });
     res.json(teams);
   } catch (error) {
     console.error('Failed to get teams:', error);
@@ -421,17 +438,17 @@ app.delete('/api/teams/:teamId', async (req, res) => {
   try {
     const teamId = req.params.teamId;
     const guildId = req.query.guildId as string;
-    
-    // Delete team from MongoDB
-    const result = await Team.deleteOne({
+
+    // Delete team from ESPN collection
+    const result = await ESPNTeam.deleteOne({
       teamId,
       guildId
     });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Team not found' });
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Failed to delete team:', error);
@@ -439,11 +456,11 @@ app.delete('/api/teams/:teamId', async (req, res) => {
   }
 });
 
-// League-specific endpoints
+// League-specific endpoints (using new ESPN collections)
 app.post('/api/leagues', async (req, res) => {
   try {
-    const { leagueId, leagueName, leagueLogo, notifyRoleId, channelId, excludedWords, guildId } = req.body;
-    
+    const { leagueId, leagueName, leagueLogo, sport, notifyRoleId, channelId, excludedWords, guildId } = req.body;
+
     // Process excluded words
     let excludedWordsArray: string[] = [];
     if (Array.isArray(excludedWords)) {
@@ -451,18 +468,19 @@ app.post('/api/leagues', async (req, res) => {
     } else if (typeof excludedWords === 'string') {
       excludedWordsArray = excludedWords.split(',').map((word: string) => word.trim()).filter(Boolean);
     }
-    
-    // Create new league in MongoDB
-    const newLeague = new League({
+
+    // Create new league in ESPN collection
+    const newLeague = new ESPNLeague({
       leagueId,
       leagueName,
       leagueLogo,
+      sport,
       guildId,
       notifyRoleId,
       channelId,
       excludedWords: excludedWordsArray
     });
-    
+
     await newLeague.save();
     
     // Return success response
@@ -486,14 +504,15 @@ app.post('/api/leagues', async (req, res) => {
 app.get('/api/leagues', async (req, res) => {
   try {
     const guildId = req.query.guildId as string;
-    
+
     // Query parameters for filtering
     const query: any = {};
     if (guildId) {
       query.guildId = guildId;
     }
-    
-    const leagues = await League.find(query).sort({ updatedAt: -1 });
+
+    // Use ESPN collection
+    const leagues = await ESPNLeague.find(query).sort({ updatedAt: -1 });
     res.json(leagues);
   } catch (error) {
     console.error('Failed to get leagues:', error);
@@ -505,17 +524,17 @@ app.delete('/api/leagues/:leagueId', async (req, res) => {
   try {
     const leagueId = req.params.leagueId;
     const guildId = req.query.guildId as string;
-    
-    // Delete league from MongoDB
-    const result = await League.deleteOne({
+
+    // Delete league from ESPN collection
+    const result = await ESPNLeague.deleteOne({
       leagueId,
       guildId
     });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'League not found' });
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Failed to delete league:', error);
@@ -548,49 +567,72 @@ app.get('/api/discord/guilds/:guildId', isAuthenticated, async (req, res) => {
   }
 });
 
-// Sports DB API Search Endpoints
-app.get('/api/sportsdb/search/teams', isAuthenticated, async (req, res) => {
+// ESPN API Endpoints
+
+// Get list of available sports
+app.get('/api/espn/sports', isAuthenticated, async (req, res) => {
   try {
-    const query = req.query.q as string;
-    if (!query) {
-      res.status(400).json({ error: 'Search query is required' });
-      return;
-    }
-    
-    const SPORTSDB_API_KEY = process.env.SPORTSDB_API_KEY;
-    const url = `https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/searchteams.php?t=${encodeURIComponent(query)}`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    res.json(data.teams || []);
-    return;
+    const sports = getSports();
+    res.json(sports);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to search teams' });
-    return;
+    res.status(500).json({ error: 'Failed to get sports' });
   }
 });
 
-app.get('/api/sportsdb/search/leagues', isAuthenticated, async (req, res) => {
+// Get leagues for a sport
+app.get('/api/espn/leagues/:sport', isAuthenticated, async (req, res) => {
   try {
-    const query = req.query.q as string;
-    if (!query) {
-      res.status(400).json({ error: 'Search query is required' });
-      return;
-    }
-    
-    const SPORTSDB_API_KEY = process.env.SPORTSDB_API_KEY;
-    const url = `https://www.thesportsdb.com/api/v1/json/${SPORTSDB_API_KEY}/search_all_leagues.php?l=${encodeURIComponent(query)}`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    res.json(data.leagues || []);
-    return;
+    const sport = req.params.sport;
+    const leagues = getLeagues(sport);
+    res.json(leagues);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to search leagues' });
-    return;
+    res.status(500).json({ error: 'Failed to get leagues' });
   }
+});
+
+// Get all teams for a sport/league
+app.get('/api/espn/teams/:sport/:league', isAuthenticated, async (req, res) => {
+  try {
+    const { sport, league } = req.params;
+    const query = req.query.q as string;
+
+    let teams;
+    if (query) {
+      teams = await searchTeams(sport, league, query);
+    } else {
+      teams = await getTeams(sport, league);
+    }
+
+    // Transform to consistent format
+    const transformedTeams = teams.map(team => ({
+      id: team.id,
+      name: team.displayName,
+      shortName: team.abbreviation || team.shortDisplayName,
+      logo: team.logo || (team.logos && team.logos[0]?.href),
+      location: team.location,
+      color: team.color
+    }));
+
+    res.json(transformedTeams);
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    res.status(500).json({ error: 'Failed to get teams' });
+  }
+});
+
+// Legacy endpoint - redirect to new ESPN endpoints
+app.get('/api/sportsdb/search/teams', isAuthenticated, async (req, res) => {
+  res.status(410).json({
+    error: 'This endpoint is deprecated. Use /api/espn/teams/:sport/:league instead.',
+    message: 'The application now uses ESPN API. Select a sport and league first.'
+  });
+});
+
+app.get('/api/sportsdb/search/leagues', isAuthenticated, async (req, res) => {
+  res.status(410).json({
+    error: 'This endpoint is deprecated. Use /api/espn/sports and /api/espn/leagues/:sport instead.',
+    message: 'The application now uses ESPN API.'
+  });
 });
 
 // Start the server

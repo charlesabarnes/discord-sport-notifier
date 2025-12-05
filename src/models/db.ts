@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
-import Team from './Team';
-import League from './League';
+import ESPNTeam from './ESPNTeam';
+import ESPNLeague from './ESPNLeague';
 
 dotenv.config();
 
@@ -11,12 +11,15 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/discor
 // Interface for config structure
 export interface ConfigTeam {
   teamId: string;
+  sport: string;
+  leagueSlug: string;
   notifyRoleId: string;
   channelId: string;
 }
 
 export interface ConfigLeague {
   leagueId: string;
+  sport: string;
   notifyRoleId: string;
   channelId: string;
   excludedWords?: string[];
@@ -38,31 +41,34 @@ export async function connectToDatabase(): Promise<void> {
   }
 }
 
-// Get config from MongoDB (environment parameter is ignored now)
+// Get ESPN config from MongoDB (uses new espnteams/espnleagues collections)
 export async function getConfigFromMongoDB(env: string = 'production'): Promise<Config> {
   try {
-    // Get teams and leagues from MongoDB - no longer filtering by environment
-    const teams = await Team.find({}).lean();
-    const leagues = await League.find({}).lean();
-    
+    // Get teams and leagues from ESPN collections
+    const teams = await ESPNTeam.find({}).lean();
+    const leagues = await ESPNLeague.find({}).lean();
+
     // Convert to config format
     const config: Config = {
       teams: teams.map(team => ({
         teamId: team.teamId,
+        sport: team.sport,
+        leagueSlug: team.leagueSlug,
         notifyRoleId: team.notifyRoleId,
         channelId: team.channelId
       })),
       leagues: leagues.map(league => ({
         leagueId: league.leagueId,
+        sport: league.sport,
         notifyRoleId: league.notifyRoleId,
         channelId: league.channelId,
         excludedWords: league.excludedWords
       }))
     };
-    
+
     return config;
   } catch (error) {
-    console.error('Error getting config from MongoDB:', error);
+    console.error('Error getting ESPN config from MongoDB:', error);
     // Return empty config on error
     return { teams: [], leagues: [] };
   }
